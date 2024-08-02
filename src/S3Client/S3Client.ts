@@ -21,7 +21,7 @@ export default class S3Client extends RollbackableClient {
         });
     }
 
-    public async invoke(tid: string): Promise<any> {
+    public async invoke(tid: string): Promise<void> {
         try {
             await this.actions[tid]();
         } catch {
@@ -29,7 +29,7 @@ export default class S3Client extends RollbackableClient {
         }
     }
 
-    public async rollback(tid: string): Promise<any> {
+    public async rollback(tid: string): Promise<void> {
         await this.reverseActions[tid]();
     }
 
