@@ -21,16 +21,16 @@ export default class S3Client extends RollbackableClient {
         });
     }
 
-    public async invoke(tid: string): Promise<void> {
+    public async invoke(actionID: string): Promise<void> {
         try {
-            await this.actions[tid]();
+            await this.actions[actionID]();
         } catch {
-            await this.rollback(tid);
+            await this.rollback(actionID);
         }
     }
 
-    public async rollback(tid: string): Promise<void> {
-        await this.reverseActions[tid]();
+    public async rollback(actionID: string): Promise<void> {
+        await this.reverseActions[actionID]();
     }
 
     public async putObject(params: { Bucket: string, Key: string, Body: Buffer }): Promise<void> {
