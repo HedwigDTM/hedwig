@@ -1,9 +1,12 @@
 export default abstract class RollbackableClient {
-    private reverseActions: {[id: string]: () => Promise<any>};
+    protected actions: {[id: string]: () => Promise<any>};
+    protected reverseActions: {[id: string]: () => Promise<any>};
 
     constructor(){
+        this.actions = {};
         this.reverseActions = {};
     }
 
-    abstract rollback(actionID: string): Promise<any>;
+    public abstract invoke(tid: string): Promise<any>;
+    public abstract rollback(tid: string): Promise<any>;
 }
