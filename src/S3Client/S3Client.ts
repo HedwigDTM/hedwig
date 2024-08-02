@@ -34,24 +34,24 @@ export default class S3Client extends RollbackableClient {
     }
 
     public async putObject(params: { Bucket: string, Key: string, Body: Buffer }): Promise<void> {
-        const tid = `put-${params.Bucket}-${params.Key}`;
+        const actionID = `put-${params.Bucket}-${params.Key}`;
 
         const action = new AWS.PutObjectCommand(params);
         const reverseAction = new AWS.DeleteObjectCommand(params);
 
-        this.actions[tid] = async () => await this.connection.send(action);
-        this.reverseActions[tid] = async () => await this.connection.send(reverseAction);
+        this.actions[actionID] = async () => await this.connection.send(action);
+        this.reverseActions[actionID] = async () => await this.connection.send(reverseAction);
     }
 
     public async deleteObject(params: { Bucket: string, Key: string }): Promise<void> {
-        const tid = `delete-${params.Bucket}-${params.Key}`;
+        const actionID = `delete-${params.Bucket}-${params.Key}`;
 
         const obj = (await this.connection.send(new AWS.GetObjectCommand(params))).Body;
 
         const action = new AWS.DeleteObjectCommand(params);
         const reverseAction = new AWS.PutObjectCommand({...params, ...{Body: obj}})
 
-        this.actions[tid] = async () => await this.connection.send(action);
-        this.reverseActions[tid] = async () => await this.connection.send(reverseAction);
+        this.actions[actionID] = async () => await this.connection.send(action);
+        this.reverseActions[actionID] = async () => await this.connection.send(reverseAction);
     }
 }
