@@ -10,15 +10,9 @@ interface S3ConnectionProps {
 export default class S3Client extends RollbackableClient {
     private connection: AWS.S3Client;
 
-    constructor(props: S3ConnectionProps){
+    constructor(_connection: AWS.S3Client){
         super();
-        this.connection = new AWS.S3Client({
-            credentials: {
-                accessKeyId: props.accessKeyId,
-                secretAccessKey: props.secretKetId,
-            },
-            region: props.region,
-        });
+        this.connection = _connection;
     }
 
     public async invoke(actionID: string): Promise<void> {
