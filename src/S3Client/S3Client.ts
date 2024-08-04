@@ -18,6 +18,7 @@ export default class S3Client extends RollbackableClient {
     public async invoke(actionID: string): Promise<void> {
         try {
             await this.actions[actionID]();
+            delete this.actions[actionID];
         } catch {
             await this.rollback(actionID);
         }
