@@ -1,14 +1,17 @@
 import { S3Params } from "../S3Client";
 import { S3Startegy } from "../S3RollbackStrategy";
-import AWS, { CopyObjectCommand } from "@aws-sdk/client-s3";
+import AWS, {
+  CopyObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { S3BackupError, S3RestoreError } from "../S3RollbackStrategy";
 
 export class DuplicateStrategy extends S3Startegy {
-    private backupsBucket: string = 'Hedwig-Backups';
+  private backupsBucket: string = "Hedwig-Backups";
 
-    constructor(_connection: AWS.S3Client) {
-        super(_connection);
-    }
+  constructor(_connection: AWS.S3Client) {
+    super(_connection);
+  }
 
   /**
    * Backs up the current version of an S3 object by duplicating it to a backup bucket.
@@ -40,11 +43,20 @@ export class DuplicateStrategy extends S3Startegy {
     const { Bucket, Key } = params;
 
     try {
-        await this.connection.send(new CopyObjectCommand({
-            Bucket: Bucket,
-            Key: Key,
-            CopySource: `${this.backupsBucket}/${Key}-backup`,
-        }));
+      await this.connection.send(
+        new CopyObjectCommand({
+          Bucket: Bucket,
+          Key: Key,
+          CopySource: `${this.backupsBucket}/${Key}-backup`,
+        })
+      );
+
+      await this.connection.send(
+        new DeleteObjectCommand({
+          Bucket: this.backupsBucket,
+          Key: `${Key}-backup`,
+        })
+      );
     } catch {
       throw new S3RestoreError();
     }
