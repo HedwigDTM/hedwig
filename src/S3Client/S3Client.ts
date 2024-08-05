@@ -1,17 +1,11 @@
 import RollbackableClient from "../RollbackableClient/RollbackableClient";
 import AWS from "@aws-sdk/client-s3";
 
-interface S3ConnectionProps {
-    accessKeyId: string;
-    secretKetId: string;
-    region: string;
-}
-
 export default class S3Client extends RollbackableClient {
     private connection: AWS.S3Client;
 
-    constructor(_connection: AWS.S3Client){
-        super();
+    constructor(_transactionID: string, _connection: AWS.S3Client){
+        super(_transactionID);
         this.connection = _connection;
     }
 
