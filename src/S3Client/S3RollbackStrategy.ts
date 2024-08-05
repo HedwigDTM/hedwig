@@ -16,7 +16,6 @@ export abstract class S3Startegy {
 
     public abstract backup(params: S3Params): void;
     public abstract restore(params: S3Params): void;
-    public abstract delete(params: S3Params): void;
 }
 
 /**
@@ -39,15 +38,6 @@ export class S3RestoreError extends Error {
     }
 }
 
-/**
- * Custom error class for restore operations.
- */
-export class S3DeleteError extends Error {
-    constructor(message = '') {
-        super(message);
-        this.name = "DeleteError";
-    }
-}
 
 export const S3RollbackFactory = (connection: AWS.S3Client, strategy: S3RollbackStrategy): S3Startegy => {
     switch(strategy) {

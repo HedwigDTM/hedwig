@@ -1,5 +1,5 @@
 import RollbackableClient from "../RollbackableClient/RollbackableClient";
-import AWS, { HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import AWS, { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { S3RollbackStrategy, S3RollbackFactory } from "./S3RollbackStrategy";
 
 export interface S3Params {
@@ -49,8 +49,8 @@ export default class S3Client extends RollbackableClient {
         };
         this.reverseActions[actionID] = async () => {
             objExists ?
-            handler.restore(params) :
-            handler.delete(params);
+            await handler.restore(params) :
+            await this.connection.send(new DeleteObjectCommand(params));
         };
     }
 
@@ -60,7 +60,7 @@ export default class S3Client extends RollbackableClient {
 
         this.actions[actionID] = async () => {
             await handler.backup(params);
-            await handler.delete(params);
+            await this.connection.send(new DeleteObjectCommand(params));
         };
         this.reverseActions[actionID] = async () => {
             await handler.restore(params);

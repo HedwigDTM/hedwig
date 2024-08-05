@@ -2,7 +2,7 @@ import AWS, { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@a
 import { S3Params } from "../S3Client";
 import { S3Startegy } from "../S3RollbackStrategy";
 import { Readable } from "stream";
-import { S3BackupError, S3RestoreError, S3DeleteError } from "../S3RollbackStrategy";
+import { S3BackupError, S3RestoreError } from "../S3RollbackStrategy";
 
 /**
  * Class to handle in-memory delete, backup and restore of S3 objects.
@@ -48,13 +48,6 @@ export class InMemoryStrategy extends S3Startegy {
             } catch {
                 throw new S3RestoreError();
             }
-        }
-    }
-    public async delete(params: S3Params): Promise<void> {
-        try {
-            await this.connection.send(new DeleteObjectCommand(params));
-        } catch {
-            throw new S3DeleteError()
         }
     }
     
