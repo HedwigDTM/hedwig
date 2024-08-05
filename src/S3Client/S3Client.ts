@@ -1,12 +1,22 @@
 import RollbackableClient from "../RollbackableClient/RollbackableClient";
-import AWS from "@aws-sdk/client-s3";
+import AWS, { HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3RollbackStrategy, S3RollbackFactory } from "./S3RollbackStrategy";
+
+export interface S3Params {
+    Bucket: string,
+    Key: string,
+    Body?: Buffer,
+    Strategy?: S3RollbackStrategy
+}
 
 export default class S3Client extends RollbackableClient {
     private connection: AWS.S3Client;
+    private rollbackStrategy: S3RollbackStrategy;
 
-    constructor(_transactionID: string, _connection: AWS.S3Client){
+    constructor(_transactionID: string, _connection: AWS.S3Client, _rollbackStrategy: S3RollbackStrategy){
         super(_transactionID);
         this.connection = _connection;
+        this.rollbackStrategy = _rollbackStrategy;
     }
 
     public async invoke(actionID: string): Promise<void> {
@@ -24,25 +34,36 @@ export default class S3Client extends RollbackableClient {
         });
     }
 
-    public async putObject(params: { Bucket: string, Key: string, Body: Buffer }): Promise<void> {
+    public async putObject(params: S3Params): Promise<void> {
         const actionID = `put-${params.Bucket}-${params.Key}`;
+        const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
+        let objExists = false;
 
-        const action = new AWS.PutObjectCommand(params);
-        const reverseAction = new AWS.DeleteObjectCommand(params);
+        this.actions[actionID] = async () => {
+            this.connection.send(new HeadObjectCommand(params)).then(() => {
+                objExists = true;
+                handler.backup(params);
+            });
 
-        this.actions[actionID] = async () => await this.connection.send(action);
-        this.reverseActions[actionID] = async () => await this.connection.send(reverseAction);
+            await this.connection.send(new PutObjectCommand(params));
+        };
+        this.reverseActions[actionID] = async () => {
+            objExists ?
+            handler.restore(params) :
+            handler.delete(params);
+        };
     }
 
-    public async deleteObject(params: { Bucket: string, Key: string }): Promise<void> {
+    public async deleteObject(params: S3Params): Promise<void> {
         const actionID = `delete-${params.Bucket}-${params.Key}`;
+        const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
 
-        const obj = (await this.connection.send(new AWS.GetObjectCommand(params))).Body;
-
-        const action = new AWS.DeleteObjectCommand(params);
-        const reverseAction = new AWS.PutObjectCommand({...params, ...{Body: obj}})
-
-        this.actions[actionID] = async () => await this.connection.send(action);
-        this.reverseActions[actionID] = async () => await this.connection.send(reverseAction);
+        this.actions[actionID] = async () => {
+            await handler.backup(params);
+            await handler.delete(params);
+        };
+        this.reverseActions[actionID] = async () => {
+            await handler.restore(params);
+        };
     }
 }
