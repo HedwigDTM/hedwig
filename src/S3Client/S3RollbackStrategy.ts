@@ -1,6 +1,7 @@
 import AWS from "@aws-sdk/client-s3";
 import { S3Params } from "./S3Client";
-import { InMemoryStrategy } from "./S3Strategies/InMemoryStaregy";
+import { InMemoryStrategy } from "./S3Strategies/InMemoryStrategy";
+import { DuplicateStrategy } from "./S3Strategies/DuplicateStrategy";
 
 export enum S3RollbackStrategy {
     IN_MEMORY,
@@ -43,6 +44,9 @@ export const S3RollbackFactory = (connection: AWS.S3Client, strategy: S3Rollback
     switch(strategy) {
         case (S3RollbackStrategy.IN_MEMORY): {
             return new InMemoryStrategy(connection);
+        }
+        case(S3RollbackStrategy.DUPLICATE_FILE): {
+            return new DuplicateStrategy(connection);
         }
         default :
             throw new Error("Rollback strategy type was not found!");
