@@ -1,4 +1,4 @@
-import AWS, { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import AWS, { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { S3Params } from "../S3Client";
 import { S3Startegy } from "../S3RollbackStrategy";
 import { Readable } from "stream";
@@ -34,6 +34,12 @@ export class InMemoryStrategy extends S3Startegy {
             throw new S3BackupError();
         }
     }
+
+    /**
+     * Restores the latest version of an S3 object from in-memory storage.
+     * @param {S3Params} params - Parameters for the restore operation.
+     * @returns {Promise<void>}
+    */
     public async restore(params: S3Params): Promise<void> {
         if(!this.inMemoryStorage) {
             throw new S3RestoreError('No backup found in inMemory storage');
