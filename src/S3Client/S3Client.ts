@@ -1,6 +1,7 @@
 import RollbackableClient from "../RollbackableClient/RollbackableClient";
 import AWS, { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { S3RollbackStrategy, S3RollbackFactory } from "./S3RollbackStrategy";
+import InvocationError from "../RollbackableClient/InvokeError";
 
 export interface S3Params {
     Bucket: string,
@@ -19,13 +20,14 @@ export default class S3Client extends RollbackableClient {
         this.rollbackStrategy = _rollbackStrategy;
     }
 
-    public async invoke(actionID: string): Promise<void> {
-        try {
-            await this.actions[actionID]();
-            delete this.actions[actionID];
-        } catch {
-            await this.rollback();
-        }
+    public async invoke(): Promise<void> {
+        Object.keys(this.actions).forEach(async aid => {
+            try {
+                await this.actions[aid]();
+            } catch {
+                throw new InvocationError(`Error in ${aid}`);
+            }
+        });
     }
 
     public async rollback(): Promise<void> {
