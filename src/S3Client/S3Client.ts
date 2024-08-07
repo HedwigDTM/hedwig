@@ -21,9 +21,9 @@ export default class S3Client extends RollbackableClient {
     }
 
     public async invoke(): Promise<void> {
-        Object.keys(this.actions).forEach(async aid => {
+        this.actions.forEach(async (action, aid) => {
             try {
-                await this.actions[aid]();
+                await action();
             } catch {
                 throw new InvocationError(`Error in ${aid}`);
             }
@@ -31,8 +31,8 @@ export default class S3Client extends RollbackableClient {
     }
 
     public async rollback(): Promise<void> {
-        Object.keys(this.actions).forEach(async aid => {
-            await this.reverseActions[aid]();
+        this.reverseActions.forEach(async (reverseAction) => {
+            await reverseAction();
         });
     }
 
@@ -41,31 +41,30 @@ export default class S3Client extends RollbackableClient {
         const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
         let objExists = false;
 
-        this.actions[actionID] = async () => {
+        this.actions.set(actionID, async () => {
             this.connection.send(new HeadObjectCommand(params)).then(() => {
                 objExists = true;
                 handler.backup(params);
             });
-
             await this.connection.send(new PutObjectCommand(params));
-        };
-        this.reverseActions[actionID] = async () => {
+        });
+        this.reverseActions.set(actionID, async () => {
             objExists ?
             await handler.restore(params) :
             await this.connection.send(new DeleteObjectCommand(params));
-        };
+        });
     }
 
     public async deleteObject(params: S3Params): Promise<void> {
         const actionID = `delete-${params.Bucket}-${params.Key}`;
         const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
 
-        this.actions[actionID] = async () => {
+        this.actions.set(actionID, async () => {
             await handler.backup(params);
             await this.connection.send(new DeleteObjectCommand(params));
-        };
-        this.reverseActions[actionID] = async () => {
+        });
+        this.reverseActions.set(actionID, async () => {
             await handler.restore(params);
-        };
+        });
     }
 }

@@ -1,12 +1,12 @@
 export default abstract class RollbackableClient {
-    protected actions: {[id: string]: () => Promise<any>};
-    protected reverseActions: {[id: string]: () => Promise<any>};
+    protected actions: Map<string, () => Promise<any>>;
+    protected reverseActions: Map<string, () => Promise<any>>;
     protected transactionID: string;
 
     constructor(_transactionID: string){
         this.transactionID = _transactionID;
-        this.actions = {};
-        this.reverseActions = {};
+        this.actions = new Map<string, () => Promise<any>>();
+        this.reverseActions = new Map<string, () => Promise<any>>();
     }
 
     public getTransactionID(): string {
