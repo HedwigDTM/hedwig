@@ -13,8 +13,8 @@ manager.setS3Config({
 });
 
 (async () => {
-    await manager.transaction(({ S3Client }) => {
-        S3Client.putObject({ Bucket: 'yoa', Key: 'V', Body: Buffer.from('Noder', 'utf-8')})
-        S3Client.putObject({ Bucket: 'yoa', Key: 'V', Body: Buffer.from('Neder', 'utf-8')})
+    await manager.transaction(async ({ S3Client }) => {
+        await S3Client.putObject({ Bucket: 'yoa', Key: 'V', Body: Buffer.from('Noder', 'utf-8')})
+        await S3Client.putObject({ Bucket: 'yoa', Key: 'V', Body: Buffer.from('Neder', 'utf-8')})
     });
 })();
