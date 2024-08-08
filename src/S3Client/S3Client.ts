@@ -1,11 +1,13 @@
 import RollbackableClient from "../RollbackableClient/RollbackableClient";
-import AWS, {
+import {
   DeleteObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
+  S3Client as AWSClient
 } from "@aws-sdk/client-s3";
-import { S3RollbackStrategy, S3RollbackFactory } from "./S3RollbackStrategy";
+import { S3RollbackStrategy } from "./S3RollbackStrategy";
 import InvocationError from "../RollbackableClient/InvokeError";
+import { S3RollbackFactory } from "./S3RollbackFactory";
 
 export interface S3Params {
   Bucket: string;
@@ -13,13 +15,13 @@ export interface S3Params {
   Body?: Buffer;
 }
 
-export default class S3Client extends RollbackableClient {
-  private connection: AWS.S3Client;
+export class S3Client extends RollbackableClient {
+  private connection: AWSClient;
   private rollbackStrategy: S3RollbackStrategy;
 
   constructor(
     _transactionID: string,
-    _connection: AWS.S3Client,
+    _connection: AWSClient,
     _rollbackStrategy: S3RollbackStrategy
   ) {
     super(_transactionID);

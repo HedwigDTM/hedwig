@@ -1,8 +1,8 @@
-import AWS, { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client as AWSClient } from "@aws-sdk/client-s3";
 import { S3Params } from "../S3Client";
 import { S3Startegy } from "../S3RollbackStrategy";
 import { Readable } from "stream";
-import { S3BackupError, S3RestoreError } from "../S3RollbackStrategy";
+import { S3BackupError, S3RestoreError } from "../S3RollbackFactory";
 
 /**
  * Class to handle in-memory delete, backup and restore of S3 objects.
@@ -11,7 +11,7 @@ import { S3BackupError, S3RestoreError } from "../S3RollbackStrategy";
 export class InMemoryStrategy extends S3Startegy {
     private inMemoryStorage?: Buffer;
 
-    constructor(_connection: AWS.S3Client){
+    constructor(_connection: AWSClient){
         super(_connection);
         this.inMemoryStorage = undefined;
     }
