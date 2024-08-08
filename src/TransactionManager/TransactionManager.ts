@@ -32,7 +32,7 @@ export default class TransactionManager {
     callback: (clients: { S3Client: S3Client }) => void
   ): Promise<void> {
     const transactionID = uuidv4();
-
+    
     const clients: { S3Client: S3Client } = {
       S3Client: new S3Client(
         transactionID,
@@ -41,7 +41,7 @@ export default class TransactionManager {
       ),
     };
 
-    callback(clients);
+    await callback(clients);
     Object.values(clients).forEach((client) => {
       try {
         client.invoke();
