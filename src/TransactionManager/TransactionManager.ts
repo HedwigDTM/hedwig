@@ -12,49 +12,43 @@ import { S3RollbackStrategy } from "../S3Client/S3RollbackStrategy";
  * or rolled back in case of any failure.
  */
 export default class TransactionManager {
-    private s3Config: S3ClientConfig & { rollbackStrategy: S3RollbackStrategy };
+  private s3Config: S3ClientConfig & { rollbackStrategy: S3RollbackStrategy };
 
-    constructor() {
-        this.s3Config = { rollbackStrategy: S3RollbackStrategy.IN_MEMORY };
-    }
+  constructor() {
+    this.s3Config = { rollbackStrategy: S3RollbackStrategy.IN_MEMORY };
+  }
 
-    public setS3Config(
-        config: S3ClientConfig & { rollbackStrategy: S3RollbackStrategy }
-    ): void {
-        this.s3Config = { ...this.s3Config, ...config };
-    }
+  public setS3Config(
+    config: S3ClientConfig & { rollbackStrategy: S3RollbackStrategy }
+  ): void {
+    this.s3Config = { ...this.s3Config, ...config };
+  }
 
-    /**
-     * Executes a transaction with the given actions.
-     * @param callback - A callback function that receives an object with the clients.
-     */
-    public async transaction(
-        callback: (clients: Map<String, RollbackableClient>) => void
-    ): Promise<void> {
-        const transactionID = uuidv4();
+  /**
+   * Executes a transaction with the given actions.
+   * @param callback - A callback function that receives an object with the clients.
+   */
+  public async transaction(
+    callback: (clients: { [key: string]: RollbackableClient }) => void
+  ): Promise<void> {
+    const transactionID = uuidv4();
 
-        const clients: Map<String, RollbackableClient> = new Map<
-            String,
-            RollbackableClient
-        >([
-            [
-                "S3Client",
-                new S3Client(
-                    transactionID,
-                    new AWS.S3Client(this.s3Config),
-                    this.s3Config.rollbackStrategy
-                ),
-            ],
-        ]);
+    const clients: { [key: string]: RollbackableClient } = {
+      S3Client: new S3Client(
+        transactionID,
+        new AWS.S3Client(this.s3Config),
+        this.s3Config.rollbackStrategy
+      ),
+    };
 
-        callback(clients);
-        clients.forEach((client) => {
-            try {
-                client.invoke();
-            } catch (error: any) {
-                client.rollback();
-                throw error;
-            }
-        });
-    }
+    callback(clients);
+    Object.keys(clients).forEach((key) => {
+      try {
+        clients[key].invoke();
+      } catch (error: any) {
+        clients[key].rollback();
+        throw error;
+      }
+    });
+  }
 }
