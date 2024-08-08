@@ -5,10 +5,6 @@ const manager = new TransactionManager();
 manager.setS3Config({
     region: 'us-east-1',
     endpoint: 'http://localhost:4566',
-    credentials: {
-        accessKeyId: 'test',
-        secretAccessKey: 'test',
-    },
     rollbackStrategy: S3RollbackStrategy.IN_MEMORY,
 });
 
