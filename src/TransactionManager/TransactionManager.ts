@@ -29,7 +29,7 @@ export default class TransactionManager {
    * @param callback - A callback function that receives an object with the clients.
    */
   public async transaction(
-    callback: (clients: { S3Client: S3Client }) => void
+    callback: (clients: { S3Client: S3Client }) => Promise<void>
   ): Promise<void> {
     const transactionID = uuidv4();
 
@@ -41,7 +41,15 @@ export default class TransactionManager {
       ),
     };
 
-    callback(clients);
+    await callback(clients);
+    const invokedClients : RollbackableClient[] = [];
+     const isAllInvokedSu
+    for (const client of Object.values(clients)) {
+      const isInvokeSuccessFull = await client.invoke();
+      
+
+      
+    }
     Object.values(clients).forEach((client) => {
       try {
         client.invoke();

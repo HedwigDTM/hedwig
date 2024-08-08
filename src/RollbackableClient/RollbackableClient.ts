@@ -3,6 +3,7 @@ export interface RollbackableAction {
     rollbackAction: () => Promise<any>;
 } 
 
+// Todo: add genrics
 export default abstract class RollbackableClient {
     protected actions: Map<string, RollbackableAction>;
     protected rollbackActions: Map<string, () => Promise<any>>;
@@ -18,6 +19,7 @@ export default abstract class RollbackableClient {
         return this.transactionID;
     }
 
-    public abstract invoke(): Promise<any>;
+    
+    public abstract invoke(): Promise<boolean>;
     public abstract rollback(): Promise<any>;
 }
