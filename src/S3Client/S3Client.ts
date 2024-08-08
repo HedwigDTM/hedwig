@@ -11,7 +11,6 @@ export interface S3Params {
   Bucket: string;
   Key: string;
   Body?: Buffer;
-  Strategy?: S3RollbackStrategy;
 }
 
 export default class S3Client extends RollbackableClient {
