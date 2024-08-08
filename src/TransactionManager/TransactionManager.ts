@@ -29,11 +29,11 @@ export default class TransactionManager {
    * @param callback - A callback function that receives an object with the clients.
    */
   public async transaction(
-    callback: (clients: { [key: string]: RollbackableClient }) => void
+    callback: (clients: { S3Client: S3Client }) => void
   ): Promise<void> {
     const transactionID = uuidv4();
 
-    const clients: { [key: string]: RollbackableClient } = {
+    const clients: { S3Client: S3Client } = {
       S3Client: new S3Client(
         transactionID,
         new AWS.S3Client(this.s3Config),
@@ -42,11 +42,11 @@ export default class TransactionManager {
     };
 
     callback(clients);
-    Object.keys(clients).forEach((key) => {
+    Object.values(clients).forEach((client) => {
       try {
-        clients[key].invoke();
+        client.invoke();
       } catch (error: any) {
-        clients[key].rollback();
+        client.rollback();
         throw error;
       }
     });
