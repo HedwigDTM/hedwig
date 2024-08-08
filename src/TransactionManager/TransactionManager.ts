@@ -1,9 +1,10 @@
 import { S3ClientConfig, S3Client as AWSClient } from "@aws-sdk/client-s3";
-import InvocationError from "../RollbackableClient/InvokeError";
+import InvocationError from "../RollbackableClient/Errors/InvokeError";
 import RollbackableClient from "../RollbackableClient/RollbackableClient";
 import { S3Client } from "../S3Client/S3Client";
 import { v4 as uuidv4 } from "uuid";
 import { S3RollbackStrategy } from "../S3Client/S3RollbackStrategy";
+import RollbackError from "../RollbackableClient/Errors/RollbackError";
 
 /**
  * TransactionManager is responsible for managing distributed transactions
@@ -32,7 +33,7 @@ export default class TransactionManager {
     callback: (clients: { S3Client: S3Client }) => Promise<void>
   ): Promise<void> {
     const transactionID = uuidv4();
-
+    
     const clients: { S3Client: S3Client } = {
       S3Client: new S3Client(
         transactionID,
@@ -43,20 +44,24 @@ export default class TransactionManager {
 
     await callback(clients);
     const invokedClients : RollbackableClient[] = [];
-     const isAllInvokedSu
+     let isAllInvokedSuccessFull = true;
     for (const client of Object.values(clients)) {
       const isInvokeSuccessFull = await client.invoke();
-      
-
-      
-    }
-    Object.values(clients).forEach((client) => {
-      try {
-        client.invoke();
-      } catch (error: any) {
-        client.rollback();
-        throw error;
+      if(!isInvokeSuccessFull) {
+        isAllInvokedSuccessFull =false;
+        break
+      } else {
+        invokedClients.push(client);
       }
-    });
+    }
+
+    if(!isAllInvokedSuccessFull) {
+      // rollback all invoked clients
+      try {
+        Promise.all(invokedClients.map((client) => client.rollback()))
+      } catch (error) {
+        throw new RollbackError("Error while rolling back transaction");
+      }
+    }
   }
 }

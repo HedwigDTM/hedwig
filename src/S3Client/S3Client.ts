@@ -8,6 +8,7 @@ import {
 import { S3RollbackStrategy } from "./S3RollbackStrategy";
 import InvocationError from "../RollbackableClient/InvokeError";
 import { S3RollbackFactory } from "./S3RollbackFactory";
+import { v4 as uuidv4 } from 'uuid';
 
 export interface S3Params {
   Bucket: string;
@@ -51,7 +52,7 @@ export class S3Client extends RollbackableClient {
   }
 
   public async putObject(params: S3Params): Promise<void> {
-    const actionID = `put-${params.Bucket}-${params.Key}`;
+    const actionID = `put-${params.Bucket}-${params.Key}-${uuidv4().substring(0, 4)}`;
     const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
     let objExists = false;
 
@@ -72,7 +73,7 @@ export class S3Client extends RollbackableClient {
   }
 
   public async deleteObject(params: S3Params): Promise<void> {
-    const actionID = `delete-${params.Bucket}-${params.Key}`;
+    const actionID = `delete-${params.Bucket}-${params.Key}-${uuidv4().substring(0, 4)}`;
     const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
 
     const action = async () => {
