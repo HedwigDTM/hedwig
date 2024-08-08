@@ -1,7 +1,7 @@
-import AWS, { S3ClientConfig } from "@aws-sdk/client-s3";
+import { S3ClientConfig, S3Client as AWSClient } from "@aws-sdk/client-s3";
 import InvocationError from "../RollbackableClient/InvokeError";
 import RollbackableClient from "../RollbackableClient/RollbackableClient";
-import S3Client from "../S3Client/S3Client";
+import { S3Client } from "../S3Client/S3Client";
 import { v4 as uuidv4 } from "uuid";
 import { S3RollbackStrategy } from "../S3Client/S3RollbackStrategy";
 
@@ -36,7 +36,7 @@ export default class TransactionManager {
     const clients: { S3Client: S3Client } = {
       S3Client: new S3Client(
         transactionID,
-        new AWS.S3Client(this.s3Config),
+        new AWSClient(this.s3Config),
         this.s3Config.rollbackStrategy
       ),
     };
