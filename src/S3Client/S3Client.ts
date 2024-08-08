@@ -6,7 +6,7 @@ import {
   S3Client as AWSClient
 } from "@aws-sdk/client-s3";
 import { S3RollbackStrategy } from "./S3RollbackStrategy";
-import InvocationError from "../RollbackableClient/InvokeError";
+import InvocationError from "../RollbackableClient/Errors/InvokeError";
 import { S3RollbackFactory } from "./S3RollbackFactory";
 import { v4 as uuidv4 } from 'uuid';
 
