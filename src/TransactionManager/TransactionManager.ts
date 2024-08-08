@@ -48,8 +48,8 @@ export default class TransactionManager {
     for (const client of Object.values(clients)) {
       const isInvokeSuccessFull = await client.invoke();
       if(!isInvokeSuccessFull) {
-        isAllInvokedSuccessFull =false;
-        break
+        isAllInvokedSuccessFull = false;
+        break;
       } else {
         invokedClients.push(client);
       }
