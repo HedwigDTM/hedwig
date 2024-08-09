@@ -6,7 +6,7 @@ import {
   S3Client as AWSClient
 } from "@aws-sdk/client-s3";
 import { S3RollbackStrategy } from "./S3RollbackStrategy";
-import InvocationError from "../RollbackableClient/InvokeError";
+import InvocationError from "../RollbackableClient/Errors/InvokeError";
 import { S3RollbackFactory } from "./S3RollbackFactory";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -30,16 +30,19 @@ export class S3Client extends RollbackableClient {
     this.rollbackStrategy = _rollbackStrategy;
   }
 
-  public async invoke(): Promise<void> {
-    this.actions.forEach(async (rollbackableAction, aid) => {
-      try {
-        await rollbackableAction.action();
-      } catch {
-        throw new InvocationError(`Error in ${aid}`);
-      } finally {
-        this.rollbackActions.set(aid, rollbackableAction.rollbackAction);
-      }
-    });
+  public async invoke(): Promise<boolean> {
+    for (const [aid,action] of this.actions) {
+        try {
+          await action.action();
+        } catch {
+          return false;
+        } finally {
+          this.rollbackActions.set(aid, action.rollbackAction);
+        }
+    }
+
+    return true;
+  
   }
 
   public async rollback(): Promise<void> {
