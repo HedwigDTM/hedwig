@@ -1,10 +1,7 @@
 import { S3ClientConfig, S3Client as AWSClient } from "@aws-sdk/client-s3";
-import InvocationError from "../RollbackableClient/Errors/InvokeError";
-import RollbackableClient from "../RollbackableClient/RollbackableClient";
 import { S3Client } from "../S3Client/S3Client";
 import { v4 as uuidv4 } from "uuid";
 import { S3RollbackStrategy } from "../S3Client/S3RollbackStrategy";
-import RollbackError from "../RollbackableClient/Errors/RollbackError";
 
 /**
  * TransactionManager is responsible for managing distributed transactions
@@ -42,26 +39,12 @@ export default class TransactionManager {
       ),
     };
 
-    await callback(clients);
-    const invokedClients: RollbackableClient[] = [];
-    let isAllInvokedSuccessFull = true;
-    for (const client of Object.values(clients)) {
-      const isInvokeSuccessFull = await client.invoke();
-      invokedClients.push(client);
-
-      if (!isInvokeSuccessFull) {
-        isAllInvokedSuccessFull = false;
-        break;
-      }
-    }
-
-    if (!isAllInvokedSuccessFull) {
-      // rollback all invoked clients
-      try {
-        Promise.all(invokedClients.map((client) => client.rollback()));
-      } catch (error) {
-        throw new RollbackError("Error while rolling back transaction");
-      }
+    try {
+      await callback(clients);
+    } catch (error) {
+      await Promise.all(
+        Object.values(clients).map((client) => client.rollback())
+      );
     }
   }
 }

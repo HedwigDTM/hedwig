@@ -6,13 +6,13 @@ export enum S3RollbackStrategy {
   DUPLICATE_FILE,
 }
 
-export abstract class S3Startegy {
+export abstract class S3Strategy {
   protected connection: AWSClient;
 
   constructor(_connection: AWSClient) {
     this.connection = _connection;
   }
 
-  public abstract backup(params: S3Params): void;
-  public abstract restore(params: S3Params): void;
+  public abstract backup(params: S3Params): Promise<void>;
+  public abstract restore(params: S3Params): Promise<void>;
 }

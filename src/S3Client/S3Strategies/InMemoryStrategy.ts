@@ -4,7 +4,7 @@ import {
   S3Client as AWSClient,
 } from "@aws-sdk/client-s3";
 import { S3Params } from "../S3Client";
-import { S3Startegy } from "../S3RollbackStrategy";
+import { S3Strategy } from "../S3RollbackStrategy";
 import { Readable } from "stream";
 import { S3BackupError, S3RestoreError } from "../S3RollbackFactory";
 
@@ -12,7 +12,7 @@ import { S3BackupError, S3RestoreError } from "../S3RollbackFactory";
  * Class to handle in-memory delete, backup and restore of S3 objects.
  * Implements the iS3Backuper interface.
  */
-export class InMemoryStrategy extends S3Startegy {
+export class InMemoryStrategy extends S3Strategy {
   private inMemoryStorage?: Buffer;
 
   constructor(_connection: AWSClient) {
