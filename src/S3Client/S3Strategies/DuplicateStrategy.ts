@@ -4,7 +4,7 @@ import { S3Startegy } from "../S3RollbackStrategy";
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
-  S3Client as AWSClient
+  S3Client as AWSClient,
 } from "@aws-sdk/client-s3";
 
 export class DuplicateStrategy extends S3Startegy {

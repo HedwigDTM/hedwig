@@ -3,12 +3,12 @@ import {
   DeleteObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
-  S3Client as AWSClient
+  S3Client as AWSClient,
 } from "@aws-sdk/client-s3";
 import { S3RollbackStrategy } from "./S3RollbackStrategy";
 import InvocationError from "../RollbackableClient/Errors/InvokeError";
 import { S3RollbackFactory } from "./S3RollbackFactory";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 export interface S3Params {
   Bucket: string;
@@ -31,18 +31,17 @@ export class S3Client extends RollbackableClient {
   }
 
   public async invoke(): Promise<boolean> {
-    for (const [aid,action] of this.actions) {
-        try {
-          await action.action();
-        } catch {
-          return false;
-        } finally {
-          this.rollbackActions.set(aid, action.rollbackAction);
-        }
+    for (const [aid, action] of this.actions) {
+      try {
+        await action.action();
+      } catch {
+        return false;
+      } finally {
+        this.rollbackActions.set(aid, action.rollbackAction);
+      }
     }
 
     return true;
-  
   }
 
   public async rollback(): Promise<void> {
@@ -52,7 +51,10 @@ export class S3Client extends RollbackableClient {
   }
 
   public async putObject(params: S3Params): Promise<void> {
-    const actionID = `put-${params.Bucket}-${params.Key}-${uuidv4().substring(0, 4)}`;
+    const actionID = `put-${params.Bucket}-${params.Key}-${uuidv4().substring(
+      0,
+      4
+    )}`;
     const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
     let objExists = false;
 
@@ -73,7 +75,9 @@ export class S3Client extends RollbackableClient {
   }
 
   public async deleteObject(params: S3Params): Promise<void> {
-    const actionID = `delete-${params.Bucket}-${params.Key}-${uuidv4().substring(0, 4)}`;
+    const actionID = `delete-${params.Bucket}-${
+      params.Key
+    }-${uuidv4().substring(0, 4)}`;
     const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
 
     const action = async () => {

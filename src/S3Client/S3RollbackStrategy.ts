@@ -1,19 +1,18 @@
-import { S3Client as AWSClient} from "@aws-sdk/client-s3";
+import { S3Client as AWSClient } from "@aws-sdk/client-s3";
 import { S3Params } from "./S3Client";
 
-
 export enum S3RollbackStrategy {
-    IN_MEMORY,
-    DUPLICATE_FILE,
+  IN_MEMORY,
+  DUPLICATE_FILE,
 }
 
 export abstract class S3Startegy {
-    protected connection: AWSClient;
+  protected connection: AWSClient;
 
-    constructor(_connection: AWSClient){
-        this.connection = _connection;
-    }
+  constructor(_connection: AWSClient) {
+    this.connection = _connection;
+  }
 
-    public abstract backup(params: S3Params): void;
-    public abstract restore(params: S3Params): void;
+  public abstract backup(params: S3Params): void;
+  public abstract restore(params: S3Params): void;
 }

@@ -33,7 +33,7 @@ export default class TransactionManager {
     callback: (clients: { S3Client: S3Client }) => Promise<void>
   ): Promise<void> {
     const transactionID = uuidv4();
-    
+
     const clients: { S3Client: S3Client } = {
       S3Client: new S3Client(
         transactionID,
@@ -43,22 +43,22 @@ export default class TransactionManager {
     };
 
     await callback(clients);
-    const invokedClients : RollbackableClient[] = [];
-     let isAllInvokedSuccessFull = true;
+    const invokedClients: RollbackableClient[] = [];
+    let isAllInvokedSuccessFull = true;
     for (const client of Object.values(clients)) {
       const isInvokeSuccessFull = await client.invoke();
       invokedClients.push(client);
 
-      if(!isInvokeSuccessFull) {
+      if (!isInvokeSuccessFull) {
         isAllInvokedSuccessFull = false;
         break;
-      } 
+      }
     }
 
-    if(!isAllInvokedSuccessFull) {
+    if (!isAllInvokedSuccessFull) {
       // rollback all invoked clients
       try {
-        Promise.all(invokedClients.map((client) => client.rollback()))
+        Promise.all(invokedClients.map((client) => client.rollback()));
       } catch (error) {
         throw new RollbackError("Error while rolling back transaction");
       }
