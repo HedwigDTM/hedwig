@@ -57,12 +57,12 @@ export class S3Client extends RollbackableClient {
     )}`;
     const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
     let objExists = false;
+    this.connection.send(new HeadObjectCommand(params)).then(() => {
+      objExists = true;
+      handler.backup(params);
+    });
 
     const action = async () => {
-      this.connection.send(new HeadObjectCommand(params)).then(() => {
-        objExists = true;
-        handler.backup(params);
-      });
       await this.connection.send(new PutObjectCommand(params));
     };
     const rollbackAction = async () => {
