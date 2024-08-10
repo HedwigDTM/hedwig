@@ -1,7 +1,8 @@
 import { InMemoryStrategy } from "./S3Strategies/InMemoryStrategy";
 import { DuplicateStrategy } from "./S3Strategies/DuplicateStrategy";
 import { S3Client as AWSClient } from "@aws-sdk/client-s3";
-import { S3RollbackStrategy, S3Strategy } from "./S3RollbackStrategy";
+import {  S3RollBackStrategy } from "./S3RollbackStrategy";
+import { S3RollbackStrategyType } from "../Types/S3/S3RollBackStrategy";
 
 /**
  * Custom error class for backup operations.
@@ -25,13 +26,13 @@ export class S3RestoreError extends Error {
 
 export const S3RollbackFactory = (
   connection: AWSClient,
-  strategy: S3RollbackStrategy
-): S3Strategy => {
+  strategy: S3RollbackStrategyType
+): S3RollBackStrategy => {
   switch (strategy) {
-    case S3RollbackStrategy.IN_MEMORY: {
+    case S3RollbackStrategyType.IN_MEMORY: {
       return new InMemoryStrategy(connection);
     }
-    case S3RollbackStrategy.DUPLICATE_FILE: {
+    case S3RollbackStrategyType.DUPLICATE_FILE: {
       return new DuplicateStrategy(connection);
     }
     default:

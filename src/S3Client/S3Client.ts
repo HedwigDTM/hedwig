@@ -5,9 +5,10 @@ import {
   PutObjectCommand,
   S3Client as AWSClient,
 } from "@aws-sdk/client-s3";
-import { S3RollbackStrategy } from "./S3RollbackStrategy";
 import { S3RollbackFactory } from "./S3RollbackFactory";
 import { v4 as uuidv4 } from "uuid";
+import { S3RollbackStrategyType } from "../Types/S3/S3RollBackStrategy";
+import { S3RollBackStrategy } from "./S3RollbackStrategy";
 
 export interface S3Params {
   Bucket: string;
@@ -15,18 +16,18 @@ export interface S3Params {
   Body?: Buffer;
 }
 
-export class S3Client extends RollbackableClient {
+export class S3RollbackClient extends RollbackableClient {
   private connection: AWSClient;
-  private rollbackStrategy: S3RollbackStrategy;
+  private rollbackStrategy: S3RollBackStrategy;
 
   constructor(
-    _transactionID: string,
-    _connection: AWSClient,
-    _rollbackStrategy: S3RollbackStrategy
+    transactionID: string,
+    connection: AWSClient,
+    rollbackStrategyType: S3RollbackStrategyType
   ) {
-    super(_transactionID);
-    this.connection = _connection;
-    this.rollbackStrategy = _rollbackStrategy;
+    super(transactionID);
+    this.connection = connection;
+    this.rollbackStrategy = S3RollbackFactory(this.connection, rollbackStrategyType);;
   }
 
   public async rollback(): Promise<void> {
@@ -40,11 +41,10 @@ export class S3Client extends RollbackableClient {
       0,
       4
     )}`;
-    const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
     let objExists = false;
     this.connection.send(new HeadObjectCommand(params)).then(() => {
       objExists = true;
-      handler.backup(params);
+      this.rollbackStrategy.backup(params);
     });
 
    
@@ -52,7 +52,7 @@ export class S3Client extends RollbackableClient {
 
     const rollbackAction = async () => {
       objExists
-        ? await handler.restore(params)
+        ? await this.rollbackStrategy.restore(params)
         : await this.connection.send(new DeleteObjectCommand(params));
     };
 
@@ -63,12 +63,11 @@ export class S3Client extends RollbackableClient {
     const actionID = `delete-${params.Bucket}-${
       params.Key
     }-${uuidv4().substring(0, 4)}`;
-    const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
 
-    await handler.backup(params);
+    await this.rollbackStrategy.backup(params);
     await this.connection.send(new DeleteObjectCommand(params));
     const rollbackAction = async () => {
-      await handler.restore(params);
+      await this.rollbackStrategy.restore(params);
     };
 
     this.actions.set(actionID, { rollbackAction });
