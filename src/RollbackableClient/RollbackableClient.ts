@@ -1,5 +1,4 @@
 export interface RollbackableAction {
-  action: () => Promise<any>;
   rollbackAction: () => Promise<any>;
 }
 
@@ -19,6 +18,5 @@ export default abstract class RollbackableClient {
     return this.transactionID;
   }
 
-  public abstract invoke(): Promise<boolean>;
   public abstract rollback(): Promise<any>;
 }

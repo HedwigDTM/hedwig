@@ -6,7 +6,6 @@ import {
   S3Client as AWSClient,
 } from "@aws-sdk/client-s3";
 import { S3RollbackStrategy } from "./S3RollbackStrategy";
-import InvocationError from "../RollbackableClient/Errors/InvokeError";
 import { S3RollbackFactory } from "./S3RollbackFactory";
 import { v4 as uuidv4 } from "uuid";
 
@@ -30,20 +29,6 @@ export class S3Client extends RollbackableClient {
     this.rollbackStrategy = _rollbackStrategy;
   }
 
-  public async invoke(): Promise<boolean> {
-    for (const [aid, action] of this.actions) {
-      try {
-        await action.action();
-      } catch {
-        return false;
-      } finally {
-        this.rollbackActions.set(aid, action.rollbackAction);
-      }
-    }
-
-    return true;
-  }
-
   public async rollback(): Promise<void> {
     this.rollbackActions.forEach(async (rollbackAction) => {
       await rollbackAction();
@@ -62,16 +47,16 @@ export class S3Client extends RollbackableClient {
       handler.backup(params);
     });
 
-    const action = async () => {
+   
       await this.connection.send(new PutObjectCommand(params));
-    };
+
     const rollbackAction = async () => {
       objExists
         ? await handler.restore(params)
         : await this.connection.send(new DeleteObjectCommand(params));
     };
 
-    this.actions.set(actionID, { action, rollbackAction });
+    this.actions.set(actionID, { rollbackAction });
   }
 
   public async deleteObject(params: S3Params): Promise<void> {
@@ -80,14 +65,12 @@ export class S3Client extends RollbackableClient {
     }-${uuidv4().substring(0, 4)}`;
     const handler = S3RollbackFactory(this.connection, this.rollbackStrategy);
 
-    const action = async () => {
-      await handler.backup(params);
-      await this.connection.send(new DeleteObjectCommand(params));
-    };
+    await handler.backup(params);
+    await this.connection.send(new DeleteObjectCommand(params));
     const rollbackAction = async () => {
       await handler.restore(params);
     };
 
-    this.actions.set(actionID, { action, rollbackAction });
+    this.actions.set(actionID, { rollbackAction });
   }
 }
