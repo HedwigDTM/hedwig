@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   HeadObjectCommand,
   GetObjectCommand,
+  CopyObjectCommand,
 } from "@aws-sdk/client-s3";
 import { describe, expect, it, vi } from "vitest";
 import { S3Client, S3Params } from "../../src/S3Client/S3Client";
@@ -24,6 +25,8 @@ const mockSend = vi.fn((command) => {
     return Promise.resolve({});
   } else if (command instanceof GetObjectCommand) {
     return Promise.resolve({ Body: mockStream });
+  } else if (command instanceof CopyObjectCommand) {
+    return Promise.resolve({});
   } else {
     return Promise.reject(new Error("Unsupported command"));
   }
@@ -42,6 +45,14 @@ describe("S3Client - put an object to S3 successfully", () => {
       "1",
       mockS3,
       S3RollbackStrategy.IN_MEMORY
+    );
+    expect(async () => await client.putObject(params)).not.toThrow();
+  });
+  it("DUPLICATE strategy", async () => {
+    const client: S3Client = new S3Client(
+      "1",
+      mockS3,
+      S3RollbackStrategy.DUPLICATE_FILE
     );
     expect(async () => await client.putObject(params)).not.toThrow();
   });
