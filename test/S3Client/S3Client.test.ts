@@ -137,4 +137,13 @@ describe("S3Client - delete object from S3", () => {
       );
     expect(async () => await client.deleteObject(params)).rejects.toThrow(S3BackupError);
   });
+  it("File doesn't exists, DUPLICATE strategy", async () => {
+    mockS3.send = mockSendFileDoesntExists;
+    const client: S3Client = new S3Client(
+        "1",
+        mockS3,
+        S3RollbackStrategy.DUPLICATE_FILE
+      );
+    expect(async () => await client.deleteObject(params)).rejects.toThrow(S3BackupError);
+  });
 });
