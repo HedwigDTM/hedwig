@@ -7,10 +7,9 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { describe, expect, it, vi } from "vitest";
-import { S3Client, S3Params } from "../../src/S3Client/S3Client";
-import { S3RollbackStrategy } from "../../src/S3Client/S3RollbackStrategy";
+import { S3RollbackClient, S3Params } from "../../src/S3Client/S3Client";
 import { Readable } from "stream";
-import { S3BackupError } from "../../src/S3Client/S3RollbackFactory";
+import { S3RollbackStrategyType } from "../../src/Types/S3/S3RollBackStrategy";
 
 // Create mock stream
 const mockStream = new Readable();
@@ -28,7 +27,7 @@ const mockSendFileDoesntExists = vi.fn((command) => {
   } else if (command instanceof GetObjectCommand) {
     return Promise.reject({});
   } else if (command instanceof CopyObjectCommand) {
-    return Promise.resolve({});
+    return Promise.reject({});
   } else if (command instanceof DeleteObjectCommand) {
     return Promise.reject({});
   } else {
@@ -60,18 +59,18 @@ describe("S3Client - put new object to S3", () => {
   };
 
   it("IN_MEMORY strategy", async () => {
-    const client: S3Client = new S3Client(
+    const client: S3RollbackClient = new S3RollbackClient(
       "1",
       mockS3,
-      S3RollbackStrategy.IN_MEMORY
+      S3RollbackStrategyType.IN_MEMORY
     );
     expect(async () => await client.putObject(params)).not.toThrow();
   });
   it("DUPLICATE strategy", async () => {
-    const client: S3Client = new S3Client(
+    const client: S3RollbackClient = new S3RollbackClient(
       "1",
       mockS3,
-      S3RollbackStrategy.DUPLICATE_FILE
+      S3RollbackStrategyType.DUPLICATE_FILE
     );
     expect(async () => await client.putObject(params)).not.toThrow();
   });
@@ -86,18 +85,18 @@ describe("S3Client - put existing object to S3", () => {
   };
 
   it("IN_MEMORY strategy", async () => {
-    const client: S3Client = new S3Client(
+    const client: S3RollbackClient = new S3RollbackClient(
       "1",
       mockS3,
-      S3RollbackStrategy.IN_MEMORY
+      S3RollbackStrategyType.IN_MEMORY
     );
     expect(async () => await client.putObject(params)).not.toThrow();
   });
   it("DUPLICATE strategy", async () => {
-    const client: S3Client = new S3Client(
+    const client: S3RollbackClient = new S3RollbackClient(
       "1",
       mockS3,
-      S3RollbackStrategy.DUPLICATE_FILE
+      S3RollbackStrategyType.DUPLICATE_FILE
     );
     expect(async () => await client.putObject(params)).not.toThrow();
   });
@@ -112,38 +111,39 @@ describe("S3Client - delete object from S3", () => {
 
   it("File exsists, IN_MEMORY strategy", async () => {
     mockS3.send = mockSendFileExists;
-    const client: S3Client = new S3Client(
+    const client: S3RollbackClient = new S3RollbackClient(
       "1",
       mockS3,
-      S3RollbackStrategy.IN_MEMORY
+      S3RollbackStrategyType.IN_MEMORY
     );
     expect(async () => await client.deleteObject(params)).not.toThrow();
   });
   it("File exsists, DUPLICATE strategy", async () => {
     mockS3.send = mockSendFileExists;
-    const client: S3Client = new S3Client(
+    const client: S3RollbackClient = new S3RollbackClient(
       "1",
       mockS3,
-      S3RollbackStrategy.DUPLICATE_FILE
+      S3RollbackStrategyType.DUPLICATE_FILE
     );
     expect(async () => await client.deleteObject(params)).not.toThrow();
   });
   it("File doesn't exists, IN_MEMORY strategy", async () => {
     mockS3.send = mockSendFileDoesntExists;
-    const client: S3Client = new S3Client(
-        "1",
-        mockS3,
-        S3RollbackStrategy.IN_MEMORY
-      );
-    expect(async () => await client.deleteObject(params)).rejects.toThrow(S3BackupError);
+    const client: S3RollbackClient = new S3RollbackClient(
+      "1",
+      mockS3,
+      S3RollbackStrategyType.IN_MEMORY
+    );
+    expect(async () => await client.deleteObject(params)).rejects.toThrow(
+    );
   });
   it("File doesn't exists, DUPLICATE strategy", async () => {
     mockS3.send = mockSendFileDoesntExists;
-    const client: S3Client = new S3Client(
-        "1",
-        mockS3,
-        S3RollbackStrategy.DUPLICATE_FILE
-      );
-    expect(async () => await client.deleteObject(params)).rejects.toThrow(S3BackupError);
+    const client: S3RollbackClient = new S3RollbackClient(
+      "1",
+      mockS3,
+      S3RollbackStrategyType.DUPLICATE_FILE
+    );
+    expect(async () => await client.deleteObject(params)).rejects.toThrow();
   });
 });

@@ -27,7 +27,10 @@ export class S3RollbackClient extends RollbackableClient {
   ) {
     super(transactionID);
     this.connection = connection;
-    this.rollbackStrategy = S3RollbackFactory(this.connection, rollbackStrategyType);;
+    this.rollbackStrategy = S3RollbackFactory(
+      this.connection,
+      rollbackStrategyType
+    );
   }
 
   public async rollback(): Promise<void> {
@@ -47,8 +50,7 @@ export class S3RollbackClient extends RollbackableClient {
       this.rollbackStrategy.backup(params);
     });
 
-   
-      await this.connection.send(new PutObjectCommand(params));
+    await this.connection.send(new PutObjectCommand(params));
 
     const rollbackAction = async () => {
       objExists
