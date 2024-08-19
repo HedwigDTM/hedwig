@@ -1,7 +1,9 @@
-import { S3ClientConfig, S3Client as AWSClient } from "@aws-sdk/client-s3";
-import { S3Client } from "../S3Client/S3Client";
+import { S3RollbackClient } from "../S3Client/S3Client";
 import { v4 as uuidv4 } from "uuid";
-import { S3RollbackStrategy } from "../S3Client/S3RollbackStrategy";
+import { S3Config } from "../Types/S3/S3Config";
+import { S3Client } from "@aws-sdk/client-s3";
+import { TransactionCallbackFunction, TransactionManagerConfig } from "../Types/TransactionManger.ts";
+import { S3RollbackStrategyType } from "../Types/S3/S3RollBackStrategy";
 
 /**
  * TransactionManager is responsible for managing distributed transactions
@@ -10,16 +12,10 @@ import { S3RollbackStrategy } from "../S3Client/S3RollbackStrategy";
  * or rolled back in case of any failure.
  */
 export default class TransactionManager {
-  private s3Config: S3ClientConfig & { rollbackStrategy: S3RollbackStrategy };
+  private s3Config?: S3Config;
 
-  constructor() {
-    this.s3Config = { rollbackStrategy: S3RollbackStrategy.IN_MEMORY };
-  }
-
-  public setS3Config(
-    config: S3ClientConfig & { rollbackStrategy: S3RollbackStrategy }
-  ): void {
-    this.s3Config = { ...this.s3Config, ...config };
+  constructor({ s3Config }: TransactionManagerConfig) {
+    this.s3Config = s3Config;
   }
 
   /**
@@ -27,17 +23,18 @@ export default class TransactionManager {
    * @param callback - A callback function that receives an object with the clients.
    */
   public async transaction(
-    callback: (clients: { S3Client: S3Client }) => Promise<void>
+    callback: TransactionCallbackFunction
   ): Promise<void> {
     const transactionID = uuidv4();
+    const clients: { S3Client?: S3RollbackClient } = {};
 
-    const clients: { S3Client: S3Client } = {
-      S3Client: new S3Client(
+    if (this.s3Config) {
+      clients.S3Client = new S3RollbackClient(
         transactionID,
-        new AWSClient(this.s3Config),
-        this.s3Config.rollbackStrategy
-      ),
-    };
+        new S3Client(this.s3Config),
+        S3RollbackStrategyType.IN_MEMORY
+      );
+    }
 
     try {
       await callback(clients);
