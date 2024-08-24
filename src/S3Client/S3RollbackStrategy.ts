@@ -1,6 +1,5 @@
-import { S3Client as AWSClient } from "@aws-sdk/client-s3";
-import { S3Params } from "./S3Client";
-
+import { S3Client as AWSClient } from '@aws-sdk/client-s3';
+import { S3Params } from './S3Client';
 
 export abstract class S3RollBackStrategy {
   protected connection: AWSClient;

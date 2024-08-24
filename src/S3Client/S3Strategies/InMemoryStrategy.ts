@@ -2,11 +2,11 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   S3Client as AWSClient,
-} from "@aws-sdk/client-s3";
-import { S3Params } from "../S3Client";
-import { S3RollBackStrategy } from "../S3RollbackStrategy";
-import { Readable } from "stream";
-import { S3BackupError, S3RestoreError } from "../S3RollbackFactory";
+} from '@aws-sdk/client-s3';
+import { S3Params } from '../S3Client';
+import { S3RollBackStrategy } from '../S3RollbackStrategy';
+import { Readable } from 'stream';
+import { S3BackupError, S3RestoreError } from '../S3RollbackFactory';
 
 /**
  * Class to handle in-memory delete, backup and restore of S3 objects.
@@ -48,7 +48,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
    */
   public async restore(params: S3Params): Promise<void> {
     if (!this.inMemoryStorage) {
-      throw new S3RestoreError("No backup found in inMemory storage");
+      throw new S3RestoreError('No backup found in inMemory storage');
     } else {
       try {
         const { Bucket, Key } = params;
@@ -73,9 +73,9 @@ export class InMemoryStrategy extends S3RollBackStrategy {
   private async streamToBuffer(stream: Readable): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
       const chunks: any[] = [];
-      stream.on("data", (chunk) => chunks.push(chunk));
-      stream.on("error", (err) => reject(err));
-      stream.on("end", () => resolve(Buffer.concat(chunks)));
+      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('error', (err) => reject(err));
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
     });
   }
 }

@@ -1,14 +1,14 @@
-import RollbackableClient from "../RollbackableClient/RollbackableClient";
+import RollbackableClient from '../RollbackableClient/RollbackableClient';
 import {
   DeleteObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client as AWSClient,
-} from "@aws-sdk/client-s3";
-import { S3RollbackFactory } from "./S3RollbackFactory";
-import { v4 as uuidv4 } from "uuid";
-import { S3RollbackStrategyType } from "../Types/S3/S3RollBackStrategy";
-import { S3RollBackStrategy } from "./S3RollbackStrategy";
+} from '@aws-sdk/client-s3';
+import { S3RollbackFactory } from './S3RollbackFactory';
+import { v4 as uuidv4 } from 'uuid';
+import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
+import { S3RollBackStrategy } from './S3RollbackStrategy';
 
 export interface S3Params {
   Bucket: string;

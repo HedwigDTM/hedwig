@@ -1,14 +1,14 @@
-import { S3Params } from "../S3Client";
-import { S3BackupError, S3RestoreError } from "../S3RollbackFactory";
-import { S3RollBackStrategy } from "../S3RollbackStrategy";
+import { S3Params } from '../S3Client';
+import { S3BackupError, S3RestoreError } from '../S3RollbackFactory';
+import { S3RollBackStrategy } from '../S3RollbackStrategy';
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
   S3Client as AWSClient,
-} from "@aws-sdk/client-s3";
+} from '@aws-sdk/client-s3';
 
 export class DuplicateStrategy extends S3RollBackStrategy {
-  private backupsBucket: string = "Hedwig-Backups";
+  private backupsBucket: string = 'Hedwig-Backups';
 
   constructor(_connection: AWSClient) {
     super(_connection);
