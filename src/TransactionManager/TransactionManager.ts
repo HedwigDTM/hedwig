@@ -7,6 +7,10 @@ import {
   TransactionManagerConfig,
 } from '../Types/TransactionManger.ts';
 import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
+import { RedisConfig } from '../Types/Redis/RedisConfig';
+import { RedisRollbackClient } from '../RedisClient/RedisClient';
+import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
+import { createClient, RedisClientType } from 'redis';
 
 /**
  * TransactionManager is responsible for managing distributed transactions
@@ -16,9 +20,11 @@ import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
  */
 export default class TransactionManager {
   private s3Config?: S3Config;
+  private redisConfig?: RedisConfig;
 
-  constructor({ s3Config }: TransactionManagerConfig) {
+  constructor({ s3Config, redisConfig }: TransactionManagerConfig) {
     this.s3Config = s3Config;
+    this.redisConfig = redisConfig;
   }
 
   /**
@@ -29,13 +35,26 @@ export default class TransactionManager {
     callback: TransactionCallbackFunction
   ): Promise<void> {
     const transactionID = uuidv4();
-    const clients: { S3Client?: S3RollbackClient } = {};
+    const clients: {
+      S3Client?: S3RollbackClient;
+      RedisClient?: RedisRollbackClient;
+    } = {};
 
     if (this.s3Config) {
       clients.S3Client = new S3RollbackClient(
         transactionID,
         new S3Client(this.s3Config),
         S3RollbackStrategyType.IN_MEMORY
+      );
+    }
+
+    if (this.redisConfig) {
+      clients.RedisClient = new RedisRollbackClient(
+        transactionID,
+        createClient(this.redisConfig) as RedisClientType,
+        this.redisConfig.rollbackStrategy
+          ? this.redisConfig.rollbackStrategy
+          : RedisRollbackStrategyType.IN_MEMORY
       );
     }
 

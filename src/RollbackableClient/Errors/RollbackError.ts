@@ -4,6 +4,6 @@
 export default class RollbackError extends Error {
   constructor(message = '') {
     super(message);
-    this.name = 'RestoreError';
+    this.name = 'RollbackError';
   }
 }
