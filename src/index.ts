@@ -11,7 +11,7 @@ const manager = new TransactionManager({
 });
 
 (async () => {
-  await manager.transaction(async ({ S3Client }) => {
+  await manager.transaction(async ({ S3Client, RedisClient }) => {
     if (S3Client) {
       await S3Client.putObject({
         Bucket: 'my-local-bucket',
@@ -23,6 +23,10 @@ const manager = new TransactionManager({
         Key: 'V2',
         Body: Buffer.from('Neder', 'utf-8'),
       });
+    }
+
+    if (RedisClient) {
+      await RedisClient.set('key1', 'value1');
     }
   });
 })();
