@@ -11,7 +11,7 @@ import {
 } from "@aws-sdk/client-s3";
 
 export class DuplicateStrategy extends S3RollBackStrategy {
-  private backupsBucket: string = "Hedwig-Backups";
+  private backupsBucket: string = 'Hedwig-Backups';
 
   constructor(_connection: AWSClient) {
     super(_connection);

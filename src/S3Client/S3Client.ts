@@ -1,4 +1,4 @@
-import RollbackableClient from "../RollbackableClient/RollbackableClient";
+import RollbackableClient from '../RollbackableClient/RollbackableClient';
 import {
   DeleteObjectCommand,
   HeadObjectCommand,
@@ -15,11 +15,11 @@ import {
   HeadBucketCommand,
   HeadObjectCommandOutput,
   HeadBucketCommandOutput,
-} from "@aws-sdk/client-s3";
-import { S3RollbackFactory } from "./S3RollbackFactory";
-import { v4 as uuidv4 } from "uuid";
-import { S3RollbackStrategyType } from "../Types/S3/S3RollBackStrategy";
-import { S3RollBackStrategy } from "./S3RollbackStrategy";
+} from '@aws-sdk/client-s3';
+import { S3RollbackFactory } from './S3RollbackFactory';
+import { v4 as uuidv4 } from 'uuid';
+import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
+import { S3RollBackStrategy } from './S3RollbackStrategy';
 
 export interface S3ObjectParams {
   Bucket: string;
@@ -176,7 +176,9 @@ export class S3RollbackClient extends RollbackableClient {
    * @param {S3ObjectParams} params - The parameters for the S3 `headObject` command (Bucket, Key, etc.).
    * @returns {Promise<void>} A promise that resolves once the metadata is retrieved.
    */
-  public async headObject(params: S3ObjectParams): Promise<HeadObjectCommandOutput> {
+  public async headObject(
+    params: S3ObjectParams
+  ): Promise<HeadObjectCommandOutput> {
     return await this.connection.send(new HeadObjectCommand(params));
   }
 
@@ -186,7 +188,9 @@ export class S3RollbackClient extends RollbackableClient {
    * @param {S3BucketParams} params - The parameters for the S3 `headBucket` command (Bucket, etc.).
    * @returns {Promise<void>} A promise that resolves once the metadata is retrieved.
    */
-  public async headBucket(params: S3BucketParams): Promise<HeadBucketCommandOutput> {
+  public async headBucket(
+    params: S3BucketParams
+  ): Promise<HeadBucketCommandOutput> {
     return await this.connection.send(new HeadBucketCommand(params));
   }
 }

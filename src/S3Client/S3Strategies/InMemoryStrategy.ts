@@ -50,7 +50,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
    */
   public async restoreFile(params: S3ObjectParams): Promise<void> {
     if (!this.inMemoryStorage) {
-      throw new S3RestoreError("No backup found in inMemory storage");
+      throw new S3RestoreError('No backup found in inMemory storage');
     } else {
       try {
         const { Bucket, Key } = params;
@@ -138,9 +138,9 @@ export class InMemoryStrategy extends S3RollBackStrategy {
   private async streamToBuffer(stream: Readable): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
       const chunks: any[] = [];
-      stream.on("data", (chunk) => chunks.push(chunk));
-      stream.on("error", (err) => reject(err));
-      stream.on("end", () => resolve(Buffer.concat(chunks)));
+      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('error', (err) => reject(err));
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
     });
   }
 }
