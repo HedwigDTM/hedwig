@@ -49,13 +49,15 @@ export class S3RollbackClient extends RollbackableClient {
   constructor(
     transactionID: string,
     connection: AWSClient,
-    rollbackStrategyType: S3RollbackStrategyType
+    rollbackStrategyType: S3RollbackStrategyType,
+    backupBucketName?: string
   ) {
     super(transactionID);
     this.connection = connection;
     this.rollbackStrategy = S3RollbackFactory(
       this.connection,
-      rollbackStrategyType
+      rollbackStrategyType,
+      backupBucketName
     );
   }
 

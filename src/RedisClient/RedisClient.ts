@@ -11,20 +11,16 @@ export class RedisRollbackClient extends RollbackableClient {
   constructor(
     transactionID: string,
     connection: RedisClientType,
-    rollbackStrategyType: RedisRollbackStrategyType
+    rollbackStrategyType: RedisRollbackStrategyType,
+    backupHashName?: string
   ) {
     super(transactionID);
     this.connection = connection;
     this.rollbackStrategy = RedisRollbackFactory(
       this.connection,
-      rollbackStrategyType
+      rollbackStrategyType,
+      backupHashName
     );
-  }
-
-  public async rollback(): Promise<void> {
-    this.rollbackActions.forEach(async (rollbackAction) => {
-      await rollbackAction();
-    });
   }
 
   /**

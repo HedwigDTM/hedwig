@@ -1,6 +1,6 @@
-import { S3BucketParams, S3ObjectParams } from "../S3Client";
-import { S3BackupError, S3RestoreError } from "../S3RollbackFactory";
-import { S3RollBackStrategy } from "../S3RollbackStrategy";
+import { S3BucketParams, S3ObjectParams } from '../S3Client';
+import { S3BackupError, S3RestoreError } from '../S3RollbackFactory';
+import { S3RollBackStrategy } from '../S3RollbackStrategy';
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
@@ -8,14 +8,14 @@ import {
   ListObjectsCommand,
   CreateBucketCommand,
   HeadBucketCommand,
-} from "@aws-sdk/client-s3";
+} from '@aws-sdk/client-s3';
 
 export class DuplicateStrategy extends S3RollBackStrategy {
-  private backupsBucket: string = 'Hedwig-Backups';
+  private backupsBucketName: string;
 
-  constructor(_connection: AWSClient) {
+  constructor(_connection: AWSClient, backupsBucketName: string) {
     super(_connection);
-    this.createBackupBucket();
+    this.backupsBucketName = backupsBucketName;
   }
 
   /**
@@ -29,7 +29,7 @@ export class DuplicateStrategy extends S3RollBackStrategy {
     try {
       await this.connection.send(
         new CopyObjectCommand({
-          Bucket: this.backupsBucket,
+          Bucket: this.backupsBucketName,
           Key: `${Key}-backup`,
           CopySource: `${Bucket}/${Key}`,
         })
@@ -52,13 +52,13 @@ export class DuplicateStrategy extends S3RollBackStrategy {
         new CopyObjectCommand({
           Bucket: Bucket,
           Key: Key,
-          CopySource: `${this.backupsBucket}/${Key}-backup`,
+          CopySource: `${this.backupsBucketName}/${Key}-backup`,
         })
       );
 
       await this.connection.send(
         new DeleteObjectCommand({
-          Bucket: this.backupsBucket,
+          Bucket: this.backupsBucketName,
           Key: `${Key}-backup`,
         })
       );
@@ -81,17 +81,19 @@ export class DuplicateStrategy extends S3RollBackStrategy {
       );
 
       if (listResponse.Contents) {
-        throw new S3BackupError("No objects found in the bucket");
+        throw new S3BackupError('No objects found in the bucket');
       }
 
       await this.connection.send(
-        new CreateBucketCommand({ Bucket: `${this.backupsBucket}-${Bucket}` })
+        new CreateBucketCommand({
+          Bucket: `${this.backupsBucketName}-${Bucket}`,
+        })
       );
 
       for (const object of listResponse.Contents!) {
         await this.connection.send(
           new CopyObjectCommand({
-            Bucket: `${this.backupsBucket}-${Bucket}`,
+            Bucket: `${this.backupsBucketName}-${Bucket}`,
             Key: object.Key!,
             CopySource: `${Bucket}/${object.Key}`,
           })
@@ -114,11 +116,13 @@ export class DuplicateStrategy extends S3RollBackStrategy {
       await this.connection.send(new CreateBucketCommand(params));
 
       const listResponse = await this.connection.send(
-        new ListObjectsCommand({ Bucket: `${this.backupsBucket}-${Bucket}` })
+        new ListObjectsCommand({
+          Bucket: `${this.backupsBucketName}-${Bucket}`,
+        })
       );
 
       if (listResponse.Contents) {
-        throw new S3RestoreError("No objects found in the backup bucket");
+        throw new S3RestoreError('No objects found in the backup bucket');
       }
 
       for (const object of listResponse.Contents!) {
@@ -126,15 +130,15 @@ export class DuplicateStrategy extends S3RollBackStrategy {
           new CopyObjectCommand({
             Bucket: params.Bucket,
             Key: object.Key!,
-            CopySource: `${this.backupsBucket}-${Bucket}/${object.Key}`,
+            CopySource: `${this.backupsBucketName}-${Bucket}/${object.Key}`,
           })
         );
       }
 
       await this.connection.send(
         new DeleteObjectCommand({
-          Bucket: `${this.backupsBucket}-${Bucket}`,
-          Key: "",
+          Bucket: `${this.backupsBucketName}-${Bucket}`,
+          Key: '',
         })
       );
     } catch {
@@ -145,15 +149,15 @@ export class DuplicateStrategy extends S3RollBackStrategy {
   private async createBackupBucket(): Promise<void> {
     try {
       await this.connection.send(
-        new HeadBucketCommand({ Bucket: this.backupsBucket })
+        new HeadBucketCommand({ Bucket: this.backupsBucketName })
       );
     } catch (error: any) {
       if (
-        error.name === "NotFound" ||
+        error.name === 'NotFound' ||
         error.$metadata?.httpStatusCode === 404
       ) {
         await this.connection.send(
-          new CreateBucketCommand({ Bucket: this.backupsBucket })
+          new CreateBucketCommand({ Bucket: this.backupsBucketName })
         );
       } else {
         throw new S3BackupError();
