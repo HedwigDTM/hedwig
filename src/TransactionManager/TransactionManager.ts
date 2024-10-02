@@ -44,7 +44,10 @@ export default class TransactionManager {
       clients.S3Client = new S3RollbackClient(
         transactionID,
         new S3Client(this.s3Config),
-        S3RollbackStrategyType.IN_MEMORY
+        this.s3Config.rollbackStrategy
+          ? this.s3Config.rollbackStrategy
+          : S3RollbackStrategyType.IN_MEMORY,
+        this.s3Config.backupBucketName
       );
     }
 
@@ -54,7 +57,8 @@ export default class TransactionManager {
         createClient(this.redisConfig) as RedisClientType,
         this.redisConfig.rollbackStrategy
           ? this.redisConfig.rollbackStrategy
-          : RedisRollbackStrategyType.IN_MEMORY
+          : RedisRollbackStrategyType.IN_MEMORY,
+        this.redisConfig.backupHashName
       );
     }
 

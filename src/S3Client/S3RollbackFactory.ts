@@ -26,14 +26,18 @@ export class S3RestoreError extends Error {
 
 export const S3RollbackFactory = (
   connection: AWSClient,
-  strategy: S3RollbackStrategyType
+  strategy: S3RollbackStrategyType,
+  backupBucketName?: string
 ): S3RollBackStrategy => {
   switch (strategy) {
     case S3RollbackStrategyType.IN_MEMORY: {
       return new InMemoryStrategy(connection);
     }
     case S3RollbackStrategyType.DUPLICATE_FILE: {
-      return new DuplicateStrategy(connection);
+      return new DuplicateStrategy(
+        connection,
+        backupBucketName ? backupBucketName : 'Hedwig-Backups'
+      );
     }
     default:
       throw new Error('Rollback strategy type was not found!');

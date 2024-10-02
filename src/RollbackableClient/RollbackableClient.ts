@@ -4,13 +4,11 @@ export interface RollbackableAction {
 
 // Todo: add genrics
 export default abstract class RollbackableClient {
-  protected actions: Map<string, RollbackableAction>;
   protected rollbackActions: Map<string, () => Promise<any>>;
   protected transactionID: string;
 
   constructor(_transactionID: string) {
     this.transactionID = _transactionID;
-    this.actions = new Map<string, RollbackableAction>();
     this.rollbackActions = new Map<string, () => Promise<any>>();
   }
 
@@ -18,5 +16,14 @@ export default abstract class RollbackableClient {
     return this.transactionID;
   }
 
-  public abstract rollback(): Promise<any>;
+  /**
+   * Rolls back all previously executed actions within the current transaction.
+   *
+   * @returns {Promise<void>} A promise that resolves once all rollback actions are complete.
+   */
+  public async rollback(): Promise<void> {
+    this.rollbackActions.forEach(async (rollbackAction) => {
+      await rollbackAction();
+    });
+  }
 }
