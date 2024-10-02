@@ -24,8 +24,9 @@ export class DuplicateStrategy extends S3RollBackStrategy {
    * @returns {Promise<void>}
    */
   public async backupFile(params: S3ObjectParams): Promise<void> {
-    const { Bucket, Key } = params;
+    this.createBackupBucket();
 
+    const { Bucket, Key } = params;
     try {
       await this.connection.send(
         new CopyObjectCommand({
@@ -73,8 +74,9 @@ export class DuplicateStrategy extends S3RollBackStrategy {
    * @returns {Promise<void>}
    */
   public async backupBucket(params: S3BucketParams): Promise<void> {
-    const { Bucket } = params;
+    this.createBackupBucket();
 
+    const { Bucket } = params;
     try {
       const listResponse = await this.connection.send(
         new ListObjectsCommand(params)
@@ -146,7 +148,7 @@ export class DuplicateStrategy extends S3RollBackStrategy {
     }
   }
 
-  private async createBackupBucket(): Promise<void> {
+  public async createBackupBucket(): Promise<void> {
     try {
       await this.connection.send(
         new HeadBucketCommand({ Bucket: this.backupsBucketName })
