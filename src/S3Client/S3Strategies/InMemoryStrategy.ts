@@ -78,13 +78,13 @@ export class InMemoryStrategy extends S3RollBackStrategy {
         new ListObjectsCommand(params)
       );
 
-      if (listResponse.Contents) {
+      if (!listResponse.Contents) {
         throw new S3BackupError("No objects found in the bucket");
       }
 
       this.inMemoryStorage = new Map<string, Buffer>();
 
-      for (const obj of listResponse.Contents!) {
+      for (const obj of listResponse.Contents) {
         const data = await this.connection.send(
           new GetObjectCommand({
             Bucket: params.Bucket,

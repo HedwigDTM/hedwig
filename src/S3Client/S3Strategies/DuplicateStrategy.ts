@@ -8,6 +8,7 @@ import {
   ListObjectsCommand,
   CreateBucketCommand,
   HeadBucketCommand,
+  DeleteBucketCommand,
 } from '@aws-sdk/client-s3';
 
 export class DuplicateStrategy extends S3RollBackStrategy {
@@ -74,15 +75,13 @@ export class DuplicateStrategy extends S3RollBackStrategy {
    * @returns {Promise<void>}
    */
   public async backupBucket(params: S3BucketParams): Promise<void> {
-    this.createBackupBucket();
-
     const { Bucket } = params;
     try {
       const listResponse = await this.connection.send(
         new ListObjectsCommand(params)
       );
 
-      if (listResponse.Contents) {
+      if (!listResponse.Contents) {
         throw new S3BackupError('No objects found in the bucket');
       }
 
@@ -92,7 +91,7 @@ export class DuplicateStrategy extends S3RollBackStrategy {
         })
       );
 
-      for (const object of listResponse.Contents!) {
+      for (const object of listResponse.Contents) {
         await this.connection.send(
           new CopyObjectCommand({
             Bucket: `${this.backupsBucketName}-${Bucket}`,
@@ -123,11 +122,11 @@ export class DuplicateStrategy extends S3RollBackStrategy {
         })
       );
 
-      if (listResponse.Contents) {
+      if (!listResponse.Contents) {
         throw new S3RestoreError('No objects found in the backup bucket');
       }
 
-      for (const object of listResponse.Contents!) {
+      for (const object of listResponse.Contents) {
         await this.connection.send(
           new CopyObjectCommand({
             Bucket: params.Bucket,
@@ -136,13 +135,6 @@ export class DuplicateStrategy extends S3RollBackStrategy {
           })
         );
       }
-
-      await this.connection.send(
-        new DeleteObjectCommand({
-          Bucket: `${this.backupsBucketName}-${Bucket}`,
-          Key: '',
-        })
-      );
     } catch {
       throw new S3RestoreError();
     }
