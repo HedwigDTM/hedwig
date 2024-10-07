@@ -42,7 +42,7 @@ describe('S3Client', () => {
 
     await mockS3Client.headBucket(params);
 
-    expect(s3Mock).toHaveReceivedCommandWith(HeadBucketCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandWith(HeadBucketCommand, params);
   });
 
   it('Checking .headObject()', async () => {
@@ -61,7 +61,7 @@ describe('S3Client', () => {
 
     await mockS3Client.headObject(params);
 
-    expect(s3Mock).toHaveReceivedCommandWith(HeadObjectCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandWith(HeadObjectCommand, params);
   });
 
   it('Checking .listBuckets()', async () => {
@@ -80,7 +80,7 @@ describe('S3Client', () => {
 
     await mockS3Client.listBuckets(params);
 
-    expect(s3Mock).toHaveReceivedCommandWith(ListBucketsCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandWith(ListBucketsCommand, params);
   });
 
   it('Checking .getObject()', async () => {
@@ -99,7 +99,7 @@ describe('S3Client', () => {
 
     await mockS3Client.getObject(params);
 
-    expect(s3Mock).toHaveReceivedCommandWith(GetObjectCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandWith(GetObjectCommand, params);
   });
 
   it('Checking .deleteBucket() - IN MEMORY ', async () => {
@@ -153,11 +153,11 @@ describe('S3Client', () => {
     await mockS3Client.deleteBucket(params);
     await mockS3Client.rollback();
 
-    expect(s3Mock).toHaveReceivedCommandWith(ListObjectsCommand, params);
-    expect(s3Mock).toHaveReceivedCommandTimes(GetObjectCommand, 1);
-    expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
-    expect(s3Mock).toHaveReceivedCommandTimes(PutObjectCommand, 1);
-    expect(s3Mock).toHaveReceivedCommandTimes(CreateBucketCommand, 1);
+    await expect(s3Mock).toHaveReceivedCommandWith(ListObjectsCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandTimes(GetObjectCommand, 1);
+    await expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandTimes(PutObjectCommand, 1);
+    await expect(s3Mock).toHaveReceivedCommandTimes(CreateBucketCommand, 1);
   });
 
   it('Checking .deleteBucket() - DUPLICATE ', async () => {
@@ -204,8 +204,8 @@ describe('S3Client', () => {
     expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, {
       Bucket: 'Hedwig-Backups-bucketName',
     });
-    expect(s3Mock).toHaveReceivedCommandTimes(ListObjectsCommand, 2);
-    expect(s3Mock).toHaveReceivedCommandTimes(DeleteBucketCommand, 1);
-    expect(s3Mock).toHaveReceivedCommandTimes(CopyObjectCommand, 2);
+    await expect(s3Mock).toHaveReceivedCommandTimes(ListObjectsCommand, 2);
+    await expect(s3Mock).toHaveReceivedCommandTimes(DeleteBucketCommand, 1);
+    await expect(s3Mock).toHaveReceivedCommandTimes(CopyObjectCommand, 2);
   });
 });
