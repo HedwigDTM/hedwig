@@ -208,4 +208,31 @@ describe('S3Client', () => {
     await expect(s3Mock).toHaveReceivedCommandTimes(DeleteBucketCommand, 1);
     await expect(s3Mock).toHaveReceivedCommandTimes(CopyObjectCommand, 2);
   });
+
+  it('Checking .createBucket', async () => {
+    s3Mock.on(CreateBucketCommand).resolves({
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    });
+
+    s3Mock.on(DeleteBucketCommand).resolves({
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    });
+
+    const mockS3Client = new S3RollbackClient(
+      'test',
+      connection,
+      S3RollbackStrategyType.IN_MEMORY
+    );
+    const params: S3BucketParams = { Bucket: 'bucketName' };
+
+    await mockS3Client.createBucket(params);
+    await mockS3Client.rollback();
+
+    await expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
+  });
 });
