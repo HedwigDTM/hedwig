@@ -3,6 +3,7 @@ import {
   CopyObjectCommand,
   CreateBucketCommand,
   DeleteBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
@@ -234,5 +235,96 @@ describe('S3Client', () => {
 
     await expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, params);
     await expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
+  });
+
+  it('Checking .deleteObject() - IN MEMORY', async () => {
+    s3Mock.on(DeleteObjectCommand).resolves({
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    });
+
+    const mockStream = new PassThrough();
+    mockStream.write('mock data');
+    mockStream.end();
+    s3Mock.on(GetObjectCommand).resolves({
+      $metadata: {
+        httpStatusCode: 200,
+      },
+      Body: mockStream as any,
+    });
+
+    s3Mock.on(PutObjectCommand).resolves({
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    });
+
+    const mockS3Client = new S3RollbackClient(
+      'test',
+      connection,
+      S3RollbackStrategyType.IN_MEMORY
+    );
+    const params: S3ObjectParams = { Bucket: 'bucketName', Key: 'key' };
+
+    await mockS3Client.deleteObject(params);
+    await mockS3Client.rollback();
+
+    await expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandWith(GetObjectCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
+      ...params,
+      Body: mockStream,
+    });
+  });
+
+  it('Checking .deleteObject() - DUPLICATE', async () => {
+    s3Mock.on(DeleteObjectCommand).resolves({
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    });
+
+    s3Mock.on(CopyObjectCommand).resolves({
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    });
+
+    s3Mock.on(HeadBucketCommand).resolves({
+        $metadata: {
+            httpStatusCode: 200,
+        },
+    });
+
+    const mockS3Client = new S3RollbackClient(
+      'test',
+      connection,
+      S3RollbackStrategyType.DUPLICATE_FILE,
+      'Hedwig-Backups'
+    );
+    const params: S3ObjectParams = { Bucket: 'bucketName', Key: 'key' };
+
+    await mockS3Client.deleteObject(params);
+    await mockS3Client.rollback();
+
+    await expect(s3Mock).toHaveReceivedCommandWith(HeadBucketCommand, {
+        Bucket: 'Hedwig-Backups'
+    });
+    await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
+      Bucket: 'Hedwig-Backups-bucketName',
+      Key: 'key-backup',
+      CopySource: 'bucketName/key',
+    });
+    await expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, params);
+    await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
+        Bucket: 'bucketName',
+        Key: 'key',
+        CopySource: 'Hedwig-Backups/key-backup',
+      });
+    await expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, {
+        Bucket: 'Hedwig-Backups-bucketName',
+        Key: 'key-backup'
+    });
   });
 });

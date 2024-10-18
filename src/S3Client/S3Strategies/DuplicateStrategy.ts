@@ -25,7 +25,7 @@ export class DuplicateStrategy extends S3RollBackStrategy {
    * @returns {Promise<void>}
    */
   public async backupFile(params: S3ObjectParams): Promise<void> {
-    this.createBackupBucket();
+    await this.createBackupBucket();
 
     const { Bucket, Key } = params;
     try {
