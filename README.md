@@ -1,10 +1,8 @@
 ![Hedwig Header](./logo.png)
 
-# Hedwig
-
 ## Project Overview
 
-**Project Name** is a [brief description of what your project does]. It is designed to [highlight key features, such as solving a specific problem, enhancing a particular workflow, etc.]. This project is written in [language/framework] and is maintained by [maintainer or community name].
+**Hedwig** is a distributed transaction manager, designed to simplify complex workflows involving interactions with multiple third-party resources. It provides a reliable, simplified approach to orchestrating and managing transactions across distributed systems, ensuring efficient and consistent operations.
 
 ## Usage
 
