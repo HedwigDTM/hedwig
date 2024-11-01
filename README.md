@@ -53,8 +53,3 @@ This project is licensed under the [MIT License](./LICENSE).
 ## Contact
 
 For any questions or support, please reach out one of the contributors.
-
----
-
-Thank you for using **Project Name**! We hope it helps you [achieve desired outcome of the project].
-```
