@@ -52,7 +52,7 @@ This project is licensed under the [MIT License](./LICENSE).
 
 ## Contact
 
-For any questions or support, please email [contact-email@example.com] or reach out on [social media or chat channel].
+For any questions or support, please reach out one of the contributors.
 
 ---
 
