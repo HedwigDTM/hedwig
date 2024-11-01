@@ -36,7 +36,3 @@ For any questions or support, please email [contact-email@example.com] or reach 
 
 Thank you for using **Project Name**! We hope it helps you [achieve desired outcome of the project].
 ```
-
-### Instructions:
-- Replace placeholders like `Project Name`, `your-username`, `your-repo-name`, and `path/to/logo.png`.
-- Link actual files for `CONTRIBUTING.md`, `LICENSE`, and `CODE_OF_CONDUCT.md` if available in your repository.
