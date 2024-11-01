@@ -35,9 +35,13 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.627.0",
+    "@smithy/util-stream": "^3.2.1",
     "@types/redis": "^4.0.11",
     "aws-sdk-client-mock": "^4.0.2",
+    "fs": "^0.0.1-security",
+    "i": "^0.3.7",
     "jest-mock-extended": "^4.0.0-beta1",
+    "npm": "^10.9.0",
     "redis": "^4.7.0",
     "typescript": "^5.5.4",
     "typescriptnpm": "^1.0.1",

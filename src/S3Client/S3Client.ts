@@ -74,10 +74,13 @@ export class S3RollbackClient extends RollbackableClient {
     const actionID = `put-${params.Bucket}-${params.Key}-${uuidv4().substring(0, 4)}`;
     let objExists = false;
 
-    this.connection.send(new HeadObjectCommand(params)).then(() => {
-      objExists = true;
-      this.rollbackStrategy.backupFile(params);
-    });
+    this.connection
+      .send(new HeadObjectCommand(params))
+      .then(() => {
+        objExists = true;
+        this.rollbackStrategy.backupFile(params);
+      })
+      .catch(() => {});
 
     await this.connection.send(new PutObjectCommand(params));
 
