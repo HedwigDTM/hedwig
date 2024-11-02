@@ -42,7 +42,7 @@ const manager = new TransactionManager({
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE).
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE.md) file for details.
 
 ## Contact
 
