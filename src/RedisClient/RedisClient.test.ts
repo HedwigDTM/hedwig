@@ -10,7 +10,7 @@ describe('RedisClient', () => {
     connection = mock<RedisClientType>();
   });
 
-  it('Checking .get', async () => {
+  it('Checking .get - should get the value', async () => {
     const mockRedisClient = new RedisRollbackClient(
       'test',
       connection,
@@ -20,7 +20,7 @@ describe('RedisClient', () => {
     await expect(connection.get).toHaveBeenCalledWith('key');
   });
 
-  it('Checking .set - item doesnt exists - IN MEMORY', async () => {
+  it('Checking .set IN MEMORY - file doesnt exists - should set the value and delete it', async () => {
     connection.exists.mockResolvedValueOnce(0);
     connection.set.mockResolvedValueOnce('OK');
 
@@ -39,7 +39,7 @@ describe('RedisClient', () => {
     await expect(connection.del).toHaveBeenCalledWith('key');
   });
 
-  it('Checking .set - item exists - IN MEMORY', async () => {
+  it('Checking .set IN MEMORY - file exists - should set the new value and rollback to old one', async () => {
     connection.exists.mockResolvedValueOnce(1);
     connection.set.mockResolvedValueOnce('OK');
     connection.get.mockResolvedValueOnce('previousValue');
@@ -58,7 +58,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'previousValue');
   });
 
-  it('Checking .set - item doesnt exists - DUPLICATE FILE', async () => {
+  it('Checking .set DUPLICATE FILE - file doesnt exists - should set the value and delete it', async () => {
     connection.exists.mockResolvedValueOnce(0);
     connection.set.mockResolvedValueOnce('OK');
 
@@ -77,7 +77,7 @@ describe('RedisClient', () => {
     await expect(connection.del).toHaveBeenCalledWith('key');
   });
 
-  it('Checking .set - item exists - DUPLICATE FILE', async () => {
+  it('Checking .set DUPLICATE FILE - file exists - should set the new value and rollback to old one', async () => {
     connection.exists.mockResolvedValueOnce(1);
     connection.set.mockResolvedValueOnce('OK');
     connection.get.mockResolvedValueOnce('previousValue');
@@ -105,7 +105,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'previousValue');
   });
 
-  it('Checking .del - item exists - IN MEMORY', async () => {
+  it('Checking .del IN MEMORY - item exists - should delete and rollback to old value', async () => {
     connection.exists.mockResolvedValueOnce(1);
     connection.del.mockResolvedValueOnce(1);
     connection.get.mockResolvedValueOnce('value');
@@ -123,7 +123,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'value');
   });
 
-  it('Checking .del - item exists - DUPLICATE FILE', async () => {
+  it('Checking .del DUPLICATE FILE - item exists - should delete and rollback to old value', async () => {
     connection.exists.mockResolvedValueOnce(1);
     connection.del.mockResolvedValueOnce(1);
     connection.get.mockResolvedValueOnce('value');
@@ -150,7 +150,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'value');
   });
 
-  it('Checking .incr', async () => {
+  it('Checking .incr - should increase and decrease value upon rollback', async () => {
     connection.incr.mockResolvedValueOnce(1);
 
     const mockRedisClient = new RedisRollbackClient(

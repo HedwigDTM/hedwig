@@ -28,7 +28,7 @@ describe('S3Client', () => {
     connection = new AWSClient({});
   });
 
-  it('Checking .headBucket()', async () => {
+  it('Checking .headBucket() - should return info on the bucket', async () => {
     s3Mock.on(HeadBucketCommand).resolves({
       $metadata: {
         httpStatusCode: 200,
@@ -66,7 +66,7 @@ describe('S3Client', () => {
     await expect(s3Mock).toHaveReceivedCommandWith(HeadObjectCommand, params);
   });
 
-  it('Checking .listBuckets()', async () => {
+  it('Checking .listBuckets() - should list the buckets', async () => {
     s3Mock.on(ListBucketsCommand).resolves({
       $metadata: {
         httpStatusCode: 200,
@@ -85,7 +85,7 @@ describe('S3Client', () => {
     await expect(s3Mock).toHaveReceivedCommandWith(ListBucketsCommand, params);
   });
 
-  it('Checking .getObject()', async () => {
+  it('Checking .getObject() - should get an object', async () => {
     s3Mock.on(HeadObjectCommand).resolves({
       $metadata: {
         httpStatusCode: 200,
@@ -104,7 +104,7 @@ describe('S3Client', () => {
     await expect(s3Mock).toHaveReceivedCommandWith(GetObjectCommand, params);
   });
 
-  it('Checking .deleteBucket() - DUPLICATE ', async () => {
+  it('Checking .deleteBucket() DUPLICATE - should delete a bucket and restore in upon rollback', async () => {
     // Mock S3 Commands
     s3Mock.on(ListObjectsCommand).resolves({
       $metadata: {
@@ -155,16 +155,16 @@ describe('S3Client', () => {
       Bucket: 'Hedwig-Backups-bucketName',
       Key: 'key',
       CopySource: 'bucketName/key',
-    })
+    });
     await expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
     await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
       Bucket: 'bucketName',
       Key: 'key',
       CopySource: 'Hedwig-Backups-bucketName/key',
-    })
+    });
   });
 
-  it('Checking .createBucket', async () => {
+  it('Checking .createBucket - should create a bucket and delete it upon rollback', async () => {
     s3Mock.on(CreateBucketCommand).resolves({
       $metadata: {
         httpStatusCode: 200,
@@ -191,7 +191,7 @@ describe('S3Client', () => {
     await expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
   });
 
-  it('Checking .deleteObject() - DUPLICATE', async () => {
+  it('Checking .deleteObject() DUPLICATE - should delete the object and restore it upon rollback', async () => {
     s3Mock.on(DeleteObjectCommand).resolves({
       $metadata: {
         httpStatusCode: 200,
@@ -241,7 +241,7 @@ describe('S3Client', () => {
     });
   });
 
-  it('Checking .putObject() - DUPLICATE - Object exists', async () => {
+  it('Checking .putObject() DUPLICATE - Object exists - should set the new file and restore the old value upon rollback', async () => {
     s3Mock.on(HeadObjectCommand).resolves({
       $metadata: {
         httpStatusCode: 200,
@@ -296,7 +296,7 @@ describe('S3Client', () => {
     });
   });
 
-  it('Checking .putObject() - DUPLICATE - Object doesnt exists', async () => {
+  it('Checking .putObject() DUPLICATE - Object doesnt exists - should set the new file and delete it upon rollback', async () => {
     s3Mock.on(HeadObjectCommand).rejects();
 
     s3Mock.on(PutObjectCommand).resolves({
