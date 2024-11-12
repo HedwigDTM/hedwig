@@ -85,9 +85,11 @@ export class S3RollbackClient extends RollbackableClient {
     await this.connection.send(new PutObjectCommand(params));
 
     const rollbackAction = async () => {
-      objExists
-        ? await this.rollbackStrategy.restoreFile(params)
-        : await this.connection.send(new DeleteObjectCommand(params));
+      if (objExists) {
+        await this.rollbackStrategy.restoreFile(params);
+      } else {
+        await this.connection.send(new DeleteObjectCommand(params));
+      }
     };
 
     this.rollbackActions.set(actionID, rollbackAction);
@@ -197,5 +199,9 @@ export class S3RollbackClient extends RollbackableClient {
     params: S3BucketParams
   ): Promise<HeadBucketCommandOutput> {
     return await this.connection.send(new HeadBucketCommand(params));
+  }
+
+  public async closeTransaction(): Promise<void> {
+    await this.rollbackStrategy.closeTransaction();
   }
 }

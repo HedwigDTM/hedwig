@@ -5,6 +5,9 @@ import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy'
 import { RedisRollbackFactory } from './RedisRollbackFactory';
 
 export class RedisRollbackClient extends RollbackableClient {
+  public closeTransaction(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
   private connection: RedisClientType;
   private rollbackStrategy: RedisRollBackStrategy;
 
@@ -44,7 +47,10 @@ export class RedisRollbackClient extends RollbackableClient {
 
     const itemExists = await this.connection.exists(key);
 
-    itemExists && this.rollbackStrategy.backupItem(key);
+    if (!itemExists) {
+      this.rollbackStrategy.backupItem(key);
+    }
+    this.rollbackStrategy.backupItem(key);
     const rollbackAction = itemExists
       ? async () => {
           this.rollbackStrategy.restoreItem(key);

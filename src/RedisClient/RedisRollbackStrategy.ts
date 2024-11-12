@@ -9,4 +9,5 @@ export abstract class RedisRollBackStrategy {
 
   public abstract backupItem(key: string): Promise<void>;
   public abstract restoreItem(key: string): Promise<void>;
+  public abstract closeTransaction(): Promise<void>;
 }
