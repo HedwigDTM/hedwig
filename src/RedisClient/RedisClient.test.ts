@@ -49,6 +49,7 @@ describe('RedisClient', () => {
       connection,
       RedisRollbackStrategyType.IN_MEMORY
     );
+
     await mockRedisClient.set('key', 'newValue');
     await mockRedisClient.rollback();
 
