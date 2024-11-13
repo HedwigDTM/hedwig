@@ -47,6 +47,14 @@ export class InMemoryStrategy extends S3RollBackStrategy {
   }
 
   /**
+   * Clears the in-memory storage once the transaction is closed.
+   * @returns {Promise<void>}
+   */
+  public async closeTransaction(): Promise<void> {
+    this.inMemoryStorage.clear();
+  }
+
+  /**
    * Restores the latest version of an S3 object from in-memory storage.
    * @param {S3Params} params - Parameters for the restore operation.
    * @returns {Promise<void>}

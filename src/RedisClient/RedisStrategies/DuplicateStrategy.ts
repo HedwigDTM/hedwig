@@ -40,4 +40,8 @@ export class DuplicateStrategy extends RedisRollBackStrategy {
       throw new RollbackError(`Key ${key} does not exist in backup.`);
     }
   }
+
+  public async closeTransaction(): Promise<void> {
+    await this.connection.del(`${this.backupHashName}*`);
+  }
 }

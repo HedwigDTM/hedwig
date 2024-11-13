@@ -26,4 +26,6 @@ export default abstract class RollbackableClient {
       await rollbackAction();
     });
   }
+
+  public abstract closeTransaction(): Promise<void>;
 }

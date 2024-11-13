@@ -105,6 +105,14 @@ export class DuplicateStrategy extends S3RollBackStrategy {
     }
   }
 
+  public async closeTransaction(): Promise<void> {
+    await this.connection.send(
+      new DeleteBucketCommand({
+        Bucket: this.backupsBucketName,
+      })
+    );
+  }
+
   /**
    * Restores the latest version of an S3 bucket from the backup bucket to the original bucket.
    * @param {S3Params} params - Parameters for the restore operation.
