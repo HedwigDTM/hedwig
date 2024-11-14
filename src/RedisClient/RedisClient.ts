@@ -48,10 +48,10 @@ export class RedisRollbackClient extends RollbackableClient {
 
     const itemExists = await this.connection.exists(key);
 
-    if (!itemExists) {
+    if (itemExists !== 0) {
       this.rollbackStrategy.backupItem(key);
     }
-    this.rollbackStrategy.backupItem(key);
+    
     const rollbackAction = itemExists
       ? async () => {
           this.rollbackStrategy.restoreItem(key);
