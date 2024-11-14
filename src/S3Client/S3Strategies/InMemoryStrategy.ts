@@ -131,8 +131,6 @@ export class InMemoryStrategy extends S3RollBackStrategy {
           throw new S3RestoreError('No backup found in inMemory storage');
         }
         for (const [key, value] of backupMap) {
-          console.log(value);
-
           await this.connection.send(
             new PutObjectCommand({
               Bucket: params.Bucket,
