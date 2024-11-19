@@ -66,7 +66,7 @@ export default class TransactionManager {
       await callback(clients);
     } catch (error) {
       await Promise.all(
-        Object.values(clients).map((client) => client.rollback())
+        [...Object.values(clients)].reverse().map((client) => client.rollback())
       );
     }
   }
