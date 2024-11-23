@@ -8,6 +8,10 @@ const manager = new TransactionManager({
     endpoint: 'http://localhost:4566',
     rollbackStrategy: S3RollbackStrategyType.DUPLICATE_FILE,
     forcePathStyle: true,
+    credentials: {
+      accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+      secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+    },
   },
   redisConfig: {
     url: 'redis://localhost:6379',
@@ -33,7 +37,8 @@ const manager = new TransactionManager({
     }
 
     console.log(
-      (await S3Client?.getObject({ Bucket: 'my-local-bucket', Key: 'V1' }))?.Metadata
+      (await S3Client?.getObject({ Bucket: 'my-local-bucket', Key: 'V1' }))
+        ?.Metadata
     );
 
     if (RedisClient) {

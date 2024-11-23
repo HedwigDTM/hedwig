@@ -85,12 +85,14 @@ export class S3RollbackClient extends RollbackableClient {
     await this.connection.send(new PutObjectCommand(params));
 
     const rollbackAction = async () => {
-      objExists
-        ? await this.rollbackStrategy.restoreFile(params)
-        : await this.connection.send(new DeleteObjectCommand(params));
+      if (objExists) {
+        await this.rollbackStrategy.restoreFile(params);
+      } else {
+        await this.connection.send(new DeleteObjectCommand(params));
+      }
     };
 
-    this.rollbackActions.set(actionID, rollbackAction);
+    this.rollbackActions.push(rollbackAction);
   }
 
   /**
@@ -102,8 +104,6 @@ export class S3RollbackClient extends RollbackableClient {
    * @returns {Promise<void>} A promise that resolves once the object is deleted and the rollback action is registered.
    */
   public async deleteObject(params: S3ObjectParams): Promise<void> {
-    const actionID = `delete-${params.Bucket}-${params.Key}-${uuidv4().substring(0, 4)}`;
-
     await this.rollbackStrategy.backupFile(params);
     await this.connection.send(new DeleteObjectCommand(params));
 
@@ -111,7 +111,7 @@ export class S3RollbackClient extends RollbackableClient {
       await this.rollbackStrategy.restoreFile(params);
     };
 
-    this.rollbackActions.set(actionID, rollbackAction);
+    this.rollbackActions.push(rollbackAction);
   }
 
   /**
@@ -121,15 +121,13 @@ export class S3RollbackClient extends RollbackableClient {
    * @returns {Promise<void>} A promise that resolves once the bucket is created and the rollback action is registered.
    */
   public async createBucket(params: S3BucketParams): Promise<void> {
-    const actionID = `create-bucket-${params.Bucket}-${uuidv4().substring(0, 4)}`;
-
     await this.connection.send(new CreateBucketCommand(params));
 
     const rollbackAction = async () => {
       await this.connection.send(new DeleteBucketCommand(params));
     };
 
-    this.rollbackActions.set(actionID, rollbackAction);
+    this.rollbackActions.push(rollbackAction);
   }
 
   /**
@@ -139,8 +137,6 @@ export class S3RollbackClient extends RollbackableClient {
    * @returns {Promise<void>} A promise that resolves once the bucket is deleted and the rollback action is registered.
    */
   public async deleteBucket(params: S3BucketParams): Promise<void> {
-    const actionID = `delete-bucket-${params.Bucket}-${uuidv4().substring(0, 4)}`;
-
     await this.rollbackStrategy.backupBucket(params);
     await this.connection.send(new DeleteBucketCommand(params));
 
@@ -148,7 +144,7 @@ export class S3RollbackClient extends RollbackableClient {
       await this.rollbackStrategy.restoreBucket(params);
     };
 
-    this.rollbackActions.set(actionID, rollbackAction);
+    this.rollbackActions.push(rollbackAction);
   }
 
   /**
