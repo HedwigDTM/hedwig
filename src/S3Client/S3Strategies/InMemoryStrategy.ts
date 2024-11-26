@@ -82,25 +82,25 @@ export class InMemoryStrategy extends S3RollBackStrategy {
       );
 
       if (!listResponse.Contents) {
-        throw new S3BackupError('No objects found in the bucket');
-      }
-
-      for (const obj of listResponse.Contents) {
-        const data = await this.connection.send(
-          new GetObjectCommand({
-            Bucket: params.Bucket,
-            Key: obj.Key,
-          })
-        );
-        const buffer = await this.streamToBuffer(data.Body as Readable);
-        if (!this.inMemoryStorage.has(params.Bucket)) {
-          this.inMemoryStorage.set(params.Bucket, new Map());
+        this.inMemoryStorage.set(params.Bucket, new Map());
+      } else {
+        for (const obj of listResponse.Contents) {
+          const data = await this.connection.send(
+            new GetObjectCommand({
+              Bucket: params.Bucket,
+              Key: obj.Key,
+            })
+          );
+          const buffer = await this.streamToBuffer(data.Body as Readable);
+          if (!this.inMemoryStorage.has(params.Bucket)) {
+            this.inMemoryStorage.set(params.Bucket, new Map());
+          }
+          const bucketMap = this.inMemoryStorage.get(params.Bucket);
+          if (!bucketMap) {
+            throw new S3BackupError();
+          }
+          bucketMap.set(obj.Key!, buffer);
         }
-        const bucketMap = this.inMemoryStorage.get(params.Bucket);
-        if (!bucketMap) {
-          throw new S3BackupError();
-        }
-        bucketMap.set(obj.Key!, buffer);
       }
     } catch (error) {
       throw new S3BackupError();
@@ -117,7 +117,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
       throw new S3RestoreError('No backup found in inMemory storage');
     } else {
       try {
-        this.connection.send(new CreateBucketCommand(params));
+        await this.connection.send(new CreateBucketCommand(params));
         const backupMap = this.inMemoryStorage.get(params.Bucket);
         if (!backupMap) {
           throw new S3RestoreError('No backup found in inMemory storage');
