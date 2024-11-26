@@ -36,7 +36,7 @@ export const S3RollbackFactory = (
     case S3RollbackStrategyType.DUPLICATE_FILE: {
       return new DuplicateStrategy(
         connection,
-        backupBucketName ? backupBucketName : 'Hedwig-Backups'
+        backupBucketName ? backupBucketName : 'hedwig-backups'
       );
     }
     default:
