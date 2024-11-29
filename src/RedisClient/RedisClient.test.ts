@@ -23,6 +23,7 @@ describe('RedisClient', () => {
   it('Checking .set IN MEMORY - file doesnt exists - should set the value and delete it', async () => {
     connection.exists.mockResolvedValueOnce(0);
     connection.set.mockResolvedValueOnce('OK');
+    connection.del.mockResolvedValueOnce(1);
 
     const mockRedisClient = new RedisRollbackClient(
       'test',
@@ -49,6 +50,7 @@ describe('RedisClient', () => {
       connection,
       RedisRollbackStrategyType.IN_MEMORY
     );
+
     await mockRedisClient.set('key', 'newValue');
     await mockRedisClient.rollback();
 

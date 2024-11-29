@@ -5,6 +5,10 @@ import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy'
 import { RedisRollbackFactory } from './RedisRollbackFactory';
 
 export class RedisRollbackClient extends RollbackableClient {
+  public closeTransaction(): Promise<void> {
+    // No need
+    return Promise.resolve();
+  }
   private connection: RedisClientType;
   private rollbackStrategy: RedisRollBackStrategy;
 

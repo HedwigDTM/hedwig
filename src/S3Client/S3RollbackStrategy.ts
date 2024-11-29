@@ -12,4 +12,5 @@ export abstract class S3RollBackStrategy {
   public abstract restoreFile(params: S3ObjectParams): Promise<void>;
   public abstract backupBucket(params: S3BucketParams): Promise<void>;
   public abstract restoreBucket(params: S3BucketParams): Promise<void>;
+  public abstract closeTransaction(): Promise<void>;
 }

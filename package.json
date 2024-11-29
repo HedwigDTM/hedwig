@@ -47,5 +47,9 @@
     "typescriptnpm": "^1.0.1",
     "uninstall": "^0.0.0",
     "uuid": "^10.0.0"
+  },
+  "peerDependencies": {
+    "@aws-sdk/client-s3": "^3.627.0",
+    "redis": "^4.7.0"
   }
 }

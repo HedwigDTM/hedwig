@@ -69,6 +69,10 @@ export default class TransactionManager {
         Object.values(clients).map((client) => client.rollback())
       );
       throw error;
+    } finally {
+      await Promise.all(
+        Object.values(clients).map((client) => client.closeTransaction())
+      );
     }
   }
 }

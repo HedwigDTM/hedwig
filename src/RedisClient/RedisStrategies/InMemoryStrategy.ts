@@ -40,4 +40,8 @@ export class InMemoryStrategy extends RedisRollBackStrategy {
       throw new RollbackError(`Key ${key} does not exist in backup.`);
     }
   }
+
+  public async closeTransaction(): Promise<void> {
+    this.backup.clear();
+  }
 }

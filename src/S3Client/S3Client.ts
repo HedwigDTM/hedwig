@@ -194,4 +194,8 @@ export class S3RollbackClient extends RollbackableClient {
   ): Promise<HeadBucketCommandOutput> {
     return await this.connection.send(new HeadBucketCommand(params));
   }
+
+  public async closeTransaction(): Promise<void> {
+    await this.rollbackStrategy.closeTransaction();
+  }
 }
