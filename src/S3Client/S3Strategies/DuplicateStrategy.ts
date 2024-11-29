@@ -8,6 +8,7 @@ import {
   ListObjectsCommand,
   CreateBucketCommand,
   HeadBucketCommand,
+  DeleteBucketCommand,
 } from '@aws-sdk/client-s3';
 
 export class DuplicateStrategy extends S3RollBackStrategy {
