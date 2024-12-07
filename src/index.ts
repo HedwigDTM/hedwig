@@ -19,7 +19,7 @@ const manager = new TransactionManager({
   },
 });
 
-(async () => {
+const main = async () => {
   await manager.transaction(async ({ S3Client, RedisClient }) => {
     if (S3Client) {
       try {
@@ -46,5 +46,8 @@ const manager = new TransactionManager({
 
       console.log(await RedisClient.get('key1'));
     }
+
+    process.exit();
   });
-})();
+};
+main();
