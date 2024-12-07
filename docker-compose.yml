@@ -15,7 +15,7 @@ services:
       - DEFAULT_REGION=us-east-1
       - DEBUG=1
     volumes:
-      - localstack_data:/var/lib/localstack
+      - localstack_data:/var/lib/localstack3
       - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:

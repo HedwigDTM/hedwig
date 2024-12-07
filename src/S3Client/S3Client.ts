@@ -137,8 +137,14 @@ export class S3RollbackClient extends RollbackableClient {
    * @returns {Promise<void>} A promise that resolves once the bucket is deleted and the rollback action is registered.
    */
   public async deleteBucket(params: S3BucketParams): Promise<void> {
-    await this.rollbackStrategy.backupBucket(params);
-    await this.connection.send(new DeleteBucketCommand(params));
+    const backupBucketName = await this.rollbackStrategy.backupBucket(params);
+
+    try {
+      await this.connection.send(new DeleteBucketCommand(params));
+    } catch (error) {
+      this.rollbackStrategy.purgeBucket(backupBucketName);
+      throw error;
+    }
 
     const rollbackAction = async () => {
       await this.rollbackStrategy.restoreBucket(params);

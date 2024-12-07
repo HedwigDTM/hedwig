@@ -75,34 +75,36 @@ export class DuplicateStrategy extends S3RollBackStrategy {
   /**
    * Backs up the current version of an S3 bucket by duplicating it to a backup bucket.
    * @param {S3Params} params - Parameters for the backup operation.
-   * @returns {Promise<void>}
+   * @returns {Promise<string> - The name of the backup bucket.}
    */
-  public async backupBucket(params: S3BucketParams): Promise<void> {
+  public async backupBucket(params: S3BucketParams): Promise<string> {
     const { Bucket } = params;
     try {
       const listResponse = await this.connection.send(
         new ListObjectsCommand(params)
       );
 
+      const bucketName = `${this.backupsBucketName}-${Bucket}`;
       if (!listResponse.Contents) {
         throw new S3BackupError('No objects found in the bucket');
       }
 
       await this.connection.send(
         new CreateBucketCommand({
-          Bucket: `${this.backupsBucketName}-${Bucket}`,
+          Bucket: bucketName,
         })
       );
 
       for (const object of listResponse.Contents) {
         await this.connection.send(
           new CopyObjectCommand({
-            Bucket: `${this.backupsBucketName}-${Bucket}`,
+            Bucket: bucketName,
             Key: object.Key!,
             CopySource: `${Bucket}/${object.Key}`,
           })
         );
       }
+      return bucketName;
     } catch {
       throw new S3BackupError();
     }
@@ -111,7 +113,12 @@ export class DuplicateStrategy extends S3RollBackStrategy {
   public async closeTransaction(): Promise<void> {
     await this.purgeBucket(this.backupsBucketName);
   }
-  private async purgeBucket(bucketName: string): Promise<void> {
+  /**
+   * Purges the specified bucket by deleting all its objects and then the bucket itself.
+   * @param {string} bucketName - The name of the bucket to purge.
+   * @returns {Promise<void>} A promise that resolves once the bucket is purged.
+   */
+  async purgeBucket(bucketName: string): Promise<void> {
     try {
       try {
         await this.connection.send(

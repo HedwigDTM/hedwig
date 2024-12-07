@@ -23,13 +23,8 @@ const main = async () => {
   await manager.transaction(async ({ S3Client, RedisClient }) => {
     if (S3Client) {
       try {
-        await S3Client.createBucket({
+        await S3Client.deleteBucket({
           Bucket: 'my-local-bucket',
-        });
-        await S3Client.putObject({
-          Bucket: 'my-local-bucket',
-          Key: 'V1',
-          Body: Buffer.from('value1', 'utf-8'),
         });
       } catch (error) {
         console.error('Error while putting object in S3:', error);
@@ -45,7 +40,7 @@ const main = async () => {
       await RedisClient.set('key1', 'value1');
     }
 
-    throw new Error('dfkgd');
+    // throw new Error('dfkgd')
 
     process.exit();
   });

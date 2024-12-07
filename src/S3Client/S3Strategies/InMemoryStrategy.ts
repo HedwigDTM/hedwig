@@ -81,14 +81,17 @@ export class InMemoryStrategy extends S3RollBackStrategy {
   /**
    * Backs up the current version of an S3 bucket to in-memory storage.
    * @param {S3Params} params - Parameters for the backup operation.
-   * @returns {Promise<void>}
+   * @returns {Promise<string> backup bucket name}
    */
-  public async backupBucket(params: S3BucketParams): Promise<void> {
+  public async backupBucket(params: S3BucketParams): Promise<string> {
     try {
       const listResponse = await this.connection.send(
         new ListObjectsCommand(params)
       );
 
+      if (!params.Bucket) {
+        throw new S3BackupError();
+      }
       if (!listResponse.Contents) {
         this.inMemoryStorage.set(params.Bucket, new Map());
       } else {
@@ -110,9 +113,15 @@ export class InMemoryStrategy extends S3RollBackStrategy {
           bucketMap.set(obj.Key!, buffer);
         }
       }
+      return params.Bucket;
     } catch (error) {
       throw new S3BackupError();
     }
+  }
+
+  public purgeBucket(bucketName: string): Promise<void> {
+    this.inMemoryStorage.delete(bucketName);
+    return Promise.resolve();
   }
 
   /**
