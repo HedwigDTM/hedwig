@@ -43,9 +43,9 @@ const main = async () => {
 
     if (RedisClient) {
       await RedisClient.set('key1', 'value1');
-
-      console.log(await RedisClient.get('key1'));
     }
+
+    throw new Error('dfkgd');
 
     process.exit();
   });

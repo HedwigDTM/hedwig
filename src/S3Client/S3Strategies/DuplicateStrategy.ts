@@ -11,6 +11,7 @@ import {
   DeleteBucketCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
+  NotFound,
 } from '@aws-sdk/client-s3';
 
 export class DuplicateStrategy extends S3RollBackStrategy {
@@ -108,11 +109,20 @@ export class DuplicateStrategy extends S3RollBackStrategy {
   }
 
   public async closeTransaction(): Promise<void> {
-    await this.deleteAllFilesInBucket(this.backupsBucketName);
+    await this.purgeBucket(this.backupsBucketName);
   }
-  private async deleteAllFilesInBucket(bucketName: string): Promise<void> {
+  private async purgeBucket(bucketName: string): Promise<void> {
     try {
-      await this.connection.send(new HeadBucketCommand({ Bucket: bucketName }));
+      try {
+        await this.connection.send(
+          new HeadBucketCommand({ Bucket: bucketName })
+        );
+      } catch (error: any) {
+        if (error?.name === 'NotFound') {
+          return;
+        }
+        throw error;
+      }
 
       let isTruncated = true;
       let continuationToken: string | undefined = undefined;
@@ -141,6 +151,11 @@ export class DuplicateStrategy extends S3RollBackStrategy {
         isTruncated = listResponse.IsTruncated || false;
         continuationToken = listResponse.NextContinuationToken;
       }
+      await this.connection.send(
+        new DeleteBucketCommand({
+          Bucket: bucketName,
+        })
+      );
     } catch (error) {
       console.error('Error deleting files:', error);
       throw error;
