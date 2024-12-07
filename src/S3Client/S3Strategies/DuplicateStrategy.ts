@@ -8,6 +8,10 @@ import {
   ListObjectsCommand,
   CreateBucketCommand,
   HeadBucketCommand,
+  DeleteBucketCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+  NotFound,
 } from '@aws-sdk/client-s3';
 
 export class DuplicateStrategy extends S3RollBackStrategy {
@@ -105,11 +109,57 @@ export class DuplicateStrategy extends S3RollBackStrategy {
   }
 
   public async closeTransaction(): Promise<void> {
-    await this.connection.send(
-      new DeleteBucketCommand({
-        Bucket: this.backupsBucketName,
-      })
-    );
+    await this.purgeBucket(this.backupsBucketName);
+  }
+  private async purgeBucket(bucketName: string): Promise<void> {
+    try {
+      try {
+        await this.connection.send(
+          new HeadBucketCommand({ Bucket: bucketName })
+        );
+      } catch (error: any) {
+        if (error?.name === 'NotFound') {
+          return;
+        }
+        throw error;
+      }
+
+      let isTruncated = true;
+      let continuationToken: string | undefined = undefined;
+
+      while (isTruncated) {
+        const listObjectsCommand: ListObjectsV2Command =
+          new ListObjectsV2Command({
+            Bucket: bucketName,
+            ContinuationToken: continuationToken,
+          });
+
+        const listResponse = await this.connection.send(listObjectsCommand);
+
+        if (listResponse.Contents && listResponse.Contents.length > 0) {
+          const deleteObjectsCommand = new DeleteObjectsCommand({
+            Bucket: bucketName,
+            Delete: {
+              Objects: listResponse.Contents.map((obj) => ({ Key: obj.Key })),
+            },
+          });
+
+          await this.connection.send(deleteObjectsCommand);
+        }
+
+        // Check if there are more objects to delete
+        isTruncated = listResponse.IsTruncated || false;
+        continuationToken = listResponse.NextContinuationToken;
+      }
+      await this.connection.send(
+        new DeleteBucketCommand({
+          Bucket: bucketName,
+        })
+      );
+    } catch (error) {
+      console.error('Error deleting files:', error);
+      throw error;
+    }
   }
 
   /**
