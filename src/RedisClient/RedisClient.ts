@@ -44,23 +44,22 @@ export class RedisRollbackClient extends RollbackableClient {
    * @param value - The value to set.
    */
   public async set(key: string, value: string): Promise<string | null> {
-    const actionID = `set-${key}`;
-
     const itemExists = await this.connection.exists(key);
 
-    if (itemExists !== 0) {
-      this.rollbackStrategy.backupItem(key);
-    }
-    
-    const rollbackAction = itemExists
-      ? async () => {
-          this.rollbackStrategy.restoreItem(key);
-        }
-      : async () => {
-          await this.connection.del(key);
-        };
-    this.rollbackActions.set(actionID, rollbackAction);
+    let rollbackAction;
 
+    if (itemExists) {
+      rollbackAction = async () => {
+        this.rollbackStrategy.restoreItem(key);
+      };
+      this.rollbackStrategy.backupItem(key);
+    } else {
+      rollbackAction = async () => {
+        await this.connection.del(key);
+      };
+    }
+
+    this.rollbackActions.push(rollbackAction);
     return await this.connection.set(key, value);
   }
 
@@ -70,13 +69,11 @@ export class RedisRollbackClient extends RollbackableClient {
    * @param key - The key to delete.
    */
   public async del(key: string): Promise<number> {
-    const actionID = `del-${key}`;
-
     this.rollbackStrategy.backupItem(key);
     const rollbackAction = async () => {
       await this.rollbackStrategy.restoreItem(key);
     };
-    this.rollbackActions.set(actionID, rollbackAction);
+    this.rollbackActions.push(rollbackAction);
 
     return await this.connection.del(key);
   }
@@ -88,12 +85,10 @@ export class RedisRollbackClient extends RollbackableClient {
    * @returns The new value of the key after incrementing.
    */
   public async incr(key: string): Promise<number> {
-    const actionID = `incr-${key}`;
-
     const rollbackAction = async () => {
       await this.connection.decr(key);
     };
-    this.rollbackActions.set(actionID, rollbackAction);
+    this.rollbackActions.push(rollbackAction);
 
     return await this.connection.incr(key);
   }
@@ -105,12 +100,10 @@ export class RedisRollbackClient extends RollbackableClient {
    * @returns The new value of the key after decrementing.
    */
   public async decr(key: string): Promise<number> {
-    const actionID = `decr-${key}`;
-
     const rollbackAction = async () => {
       await this.connection.incr(key);
     };
-    this.rollbackActions.set(actionID, rollbackAction);
+    this.rollbackActions.push(rollbackAction);
 
     return await this.connection.decr(key);
   }

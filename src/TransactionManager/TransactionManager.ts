@@ -54,7 +54,7 @@ export default class TransactionManager {
     if (this.redisConfig) {
       clients.RedisClient = new RedisRollbackClient(
         transactionID,
-        createClient(this.redisConfig) as RedisClientType,
+        await (createClient(this.redisConfig) as RedisClientType).connect(),
         this.redisConfig.rollbackStrategy
           ? this.redisConfig.rollbackStrategy
           : RedisRollbackStrategyType.IN_MEMORY,
@@ -68,6 +68,7 @@ export default class TransactionManager {
       await Promise.all(
         Object.values(clients).map((client) => client.rollback())
       );
+      throw error;
     } finally {
       await Promise.all(
         Object.values(clients).map((client) => client.closeTransaction())
