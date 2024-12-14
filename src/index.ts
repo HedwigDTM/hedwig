@@ -23,6 +23,31 @@ const main = async () => {
   await manager.transaction(async ({ S3Client, RedisClient }) => {
     if (S3Client) {
       try {
+        // const object = await S3Client.deleteObject({
+        //   Bucket: 'my-local-bucket-1',
+        //   Key: 'V1',
+        // });
+        // await S3Client.putObject({
+        //   Bucket: 'my-local-bucket',
+        //   Key: 'V1',
+        //   Body: Buffer.from('hello world', 'utf-8'),
+        // });
+        // await S3Client.createBucket({
+        //   Bucket: 'my-local-bucket',
+        // });
+        // await S3Client.putObject({
+        //   Bucket: 'my-local-bucket',
+        //   Key: 'V1',
+        //   Body: Buffer.from('hello world', 'utf-8'),
+        // });
+        // await S3Client.deleteObject({
+        //   Bucket: 'my-local-bucket',
+        //   Key: 'V1',
+        // });
+        await S3Client.deleteObject({
+          Bucket: 'my-local-bucket',
+          Key: 'V1',
+        });
         await S3Client.deleteBucket({
           Bucket: 'my-local-bucket',
         });
@@ -31,18 +56,18 @@ const main = async () => {
       }
     }
 
-    console.log(
-      (await S3Client?.getObject({ Bucket: 'my-local-bucket', Key: 'V1' }))
-        ?.Metadata
-    );
+    // console.log(
+    //   (await S3Client?.getObject({ Bucket: 'my-local-bucket', Key: 'V1' }))
+    //     ?.Metadata
+    // );
 
     if (RedisClient) {
       await RedisClient.set('key1', 'value1');
     }
 
-    // throw new Error('dfkgd')
+    // throw new Error('dfkgd');
 
-    process.exit();
+    // process.exit();
   });
 };
 main();

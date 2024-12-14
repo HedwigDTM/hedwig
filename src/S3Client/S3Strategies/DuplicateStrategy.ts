@@ -39,8 +39,9 @@ export class DuplicateStrategy extends S3RollBackStrategy {
           CopySource: `${Bucket}/${Key}`,
         })
       );
-    } catch {
-      throw new S3BackupError();
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
   }
 
@@ -105,8 +106,9 @@ export class DuplicateStrategy extends S3RollBackStrategy {
         );
       }
       return bucketName;
-    } catch {
-      throw new S3BackupError();
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
   }
 
@@ -218,7 +220,7 @@ export class DuplicateStrategy extends S3RollBackStrategy {
           new CreateBucketCommand({ Bucket: this.backupsBucketName })
         );
       } else {
-        throw new S3BackupError();
+        throw error;
       }
     }
   }
