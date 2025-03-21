@@ -42,7 +42,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
       const bucketMap = this.inMemoryStorage.get(Bucket) as Map<string, Buffer>;
       bucketMap.set(Key, await this.streamToBuffer(data.Body as Readable));
     } catch (error) {
-      throw new S3BackupError();
+      throw new S3BackupError('Failed to backup file from S3', error);
     }
   }
 
@@ -65,15 +65,19 @@ export class InMemoryStrategy extends S3RollBackStrategy {
     } else {
       try {
         const { Bucket, Key } = params;
+        const backupData = this.inMemoryStorage.get(Bucket)?.get(Key);
+        if (!backupData) {
+          throw new S3RestoreError('No backup data found for a specified file');
+        }
         await this.connection.send(
           new PutObjectCommand({
             Bucket,
             Key,
-            Body: this.inMemoryStorage.get(Bucket)?.get(Key) as Buffer,
+            Body: backupData,
           })
         );
-      } catch {
-        throw new S3RestoreError();
+      } catch (error) {
+        throw new S3RestoreError('Failed to restore file to S3', error);
       }
     }
   }
@@ -85,33 +89,52 @@ export class InMemoryStrategy extends S3RollBackStrategy {
    */
   public async backupBucket(params: S3BucketParams): Promise<void> {
     try {
-      const listResponse = await this.connection.send(
-        new ListObjectsCommand(params)
-      );
+      let nextMarker: string | undefined;
 
-      if (!listResponse.Contents) {
-        this.inMemoryStorage.set(params.Bucket, new Map());
-      } else {
-        for (const obj of listResponse.Contents) {
-          const data = await this.connection.send(
-            new GetObjectCommand({
-              Bucket: params.Bucket,
-              Key: obj.Key,
-            })
-          );
-          const buffer = await this.streamToBuffer(data.Body as Readable);
+      do {
+        const listResponse = await this.connection.send(
+          new ListObjectsCommand({
+            ...params,
+            Marker: nextMarker,
+          })
+        );
+
+        if (!listResponse.Contents) {
           if (!this.inMemoryStorage.has(params.Bucket)) {
             this.inMemoryStorage.set(params.Bucket, new Map());
           }
-          const bucketMap = this.inMemoryStorage.get(params.Bucket);
-          if (!bucketMap) {
-            throw new S3BackupError();
-          }
-          bucketMap.set(obj.Key!, buffer);
+          break;
         }
-      }
+
+        await Promise.all(
+          listResponse.Contents.map(async (obj) => {
+            if (!obj.Key) {
+              throw new S3BackupError('Object key is undefined');
+            }
+            const data = await this.connection.send(
+              new GetObjectCommand({
+                Bucket: params.Bucket,
+                Key: obj.Key,
+              })
+            );
+            const buffer = await this.streamToBuffer(data.Body as Readable);
+            if (!this.inMemoryStorage.has(params.Bucket)) {
+              this.inMemoryStorage.set(params.Bucket, new Map());
+            }
+            const bucketMap = this.inMemoryStorage.get(params.Bucket);
+            if (!bucketMap) {
+              throw new S3BackupError(
+                'Failed to initialize bucket map in memory storage'
+              );
+            }
+            bucketMap.set(obj.Key, buffer);
+          })
+        );
+
+        nextMarker = listResponse.NextMarker;
+      } while (nextMarker);
     } catch (error) {
-      throw new S3BackupError();
+      throw new S3BackupError('Failed to backup bucket from S3', error);
     }
   }
 
@@ -128,19 +151,22 @@ export class InMemoryStrategy extends S3RollBackStrategy {
         await this.connection.send(new CreateBucketCommand(params));
         const backupMap = this.inMemoryStorage.get(params.Bucket);
         if (!backupMap) {
-          throw new S3RestoreError('No backup found in inMemory storage');
+          throw new S3RestoreError('No backup found for a specified bucket');
         }
-        for (const [key, value] of backupMap) {
-          await this.connection.send(
-            new PutObjectCommand({
-              Bucket: params.Bucket,
-              Key: key,
-              Body: value,
-            })
-          );
-        }
-      } catch {
-        throw new S3RestoreError();
+
+        await Promise.all(
+          Array.from(backupMap.entries()).map(async ([key, value]) => {
+            await this.connection.send(
+              new PutObjectCommand({
+                Bucket: params.Bucket,
+                Key: key,
+                Body: value,
+              })
+            );
+          })
+        );
+      } catch (error) {
+        throw new S3RestoreError('Failed to restore bucket to S3', error);
       }
     }
   }
