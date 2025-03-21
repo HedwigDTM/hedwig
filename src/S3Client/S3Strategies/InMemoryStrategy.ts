@@ -42,7 +42,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
       const bucketMap = this.inMemoryStorage.get(Bucket) as Map<string, Buffer>;
       bucketMap.set(Key, await this.streamToBuffer(data.Body as Readable));
     } catch (error) {
-      throw new S3BackupError('Failed to backup file from S3', error);
+      throw new S3BackupError(`Failed to backup file from S3: ${error}`);
     }
   }
 
@@ -77,7 +77,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
           })
         );
       } catch (error) {
-        throw new S3RestoreError('Failed to restore file to S3', error);
+        throw new S3RestoreError(`Failed to restore file to S3: ${error}`);
       }
     }
   }
@@ -134,7 +134,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
         nextMarker = listResponse.NextMarker;
       } while (nextMarker);
     } catch (error) {
-      throw new S3BackupError('Failed to backup bucket from S3', error);
+      throw new S3BackupError(`Failed to backup bucket from S3: ${error}`);
     }
   }
 
@@ -166,7 +166,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
           })
         );
       } catch (error) {
-        throw new S3RestoreError('Failed to restore bucket to S3', error);
+        throw new S3RestoreError(`Failed to restore bucket to S3: ${error}`);
       }
     }
   }
