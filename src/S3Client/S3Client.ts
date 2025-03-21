@@ -71,13 +71,12 @@ export class S3RollbackClient extends RollbackableClient {
    * @returns {Promise<void>} A promise that resolves once the object is uploaded and the rollback action is registered.
    */
   public async putObject(params: S3ObjectParams): Promise<void> {
-    const actionID = `put-${params.Bucket}-${params.Key}-${uuidv4().substring(0, 4)}`;
-    let objExists = false;
+    let objExisted = false;
 
     this.connection
       .send(new HeadObjectCommand(params))
       .then(() => {
-        objExists = true;
+        objExisted = true;
         this.rollbackStrategy.backupFile(params);
       })
       .catch(() => {});
@@ -85,7 +84,7 @@ export class S3RollbackClient extends RollbackableClient {
     await this.connection.send(new PutObjectCommand(params));
 
     const rollbackAction = async () => {
-      if (objExists) {
+      if (objExisted) {
         await this.rollbackStrategy.restoreFile(params);
       } else {
         await this.connection.send(new DeleteObjectCommand(params));
