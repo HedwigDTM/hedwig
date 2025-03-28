@@ -187,13 +187,13 @@ describe('S3Client', () => {
       await mockS3Client.rollback();
 
       await expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, {
-        Bucket: 'hedwig-Backups-bucketName',
+        Bucket: 'hedwig-backups-bucketName',
       });
       await expect(s3Mock).toHaveReceivedCommandWith(ListObjectsCommand, {
         Bucket: 'bucketName',
       });
       await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
-        Bucket: 'hedwig-Backups-bucketName',
+        Bucket: 'hedwig-backups-bucketName',
         Key: 'key',
         CopySource: 'bucketName/key',
       });
@@ -204,7 +204,7 @@ describe('S3Client', () => {
       await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        CopySource: 'hedwig-Backups-bucketName/key',
+        CopySource: 'hedwig-backups-bucketName/key',
       });
     });
 
@@ -517,7 +517,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        Body: expect.any(Buffer),
+        Body: expect.any(Readable),
       });
     });
 
@@ -569,7 +569,11 @@ describe('S3Client', () => {
         Bucket: 'bucketName',
         Key: 'key',
       });
-      expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, params);
+      expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
+        Bucket: 'bucketName',
+        Key: 'key',
+        Body: expect.any(Readable),
+      });
     });
 
     it('Checking .putObject() Memory - Object doesnt exists - should set the new file and delete it upon rollback', async () => {
