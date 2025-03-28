@@ -15,9 +15,12 @@ import {
   HeadBucketCommand,
   HeadObjectCommandOutput,
   HeadBucketCommandOutput,
+  PutObjectCommandOutput,
+  DeleteObjectCommandOutput,
+  CreateBucketCommandOutput,
+  DeleteBucketCommandOutput,
 } from '@aws-sdk/client-s3';
 import { S3RollbackFactory } from './S3RollbackFactory';
-import { v4 as uuidv4 } from 'uuid';
 import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
 import { S3RollBackStrategy } from './S3RollbackStrategy';
 
@@ -68,9 +71,11 @@ export class S3RollbackClient extends RollbackableClient {
    * a rollback action to delete the newly created object in case of failure.
    *
    * @param {S3ObjectParams} params - The parameters for the S3 `putObject` command (Bucket, Key, Body, etc.).
-   * @returns {Promise<void>} A promise that resolves once the object is uploaded and the rollback action is registered.
+   * @returns {Promise<PutObjectCommandOutput>} A promise that resolves with the result of the `putObject` command.
    */
-  public async putObject(params: S3ObjectParams): Promise<void> {
+  public async putObject(
+    params: S3ObjectParams
+  ): Promise<PutObjectCommandOutput> {
     let objExisted = false;
 
     try {
@@ -81,7 +86,7 @@ export class S3RollbackClient extends RollbackableClient {
       // Object doesn't exist, continue with put operation
     }
 
-    await this.connection.send(new PutObjectCommand(params));
+    const result = await this.connection.send(new PutObjectCommand(params));
 
     const rollbackAction = async () => {
       if (objExisted) {
@@ -92,6 +97,8 @@ export class S3RollbackClient extends RollbackableClient {
     };
 
     this.rollbackActions.push(rollbackAction);
+
+    return result;
   }
 
   /**
@@ -100,50 +107,62 @@ export class S3RollbackClient extends RollbackableClient {
    * A backup is created before deleting the object. In case of failure, the rollback action restores the backup.
    *
    * @param {S3ObjectParams} params - The parameters for the S3 `deleteObject` command (Bucket, Key, etc.).
-   * @returns {Promise<void>} A promise that resolves once the object is deleted and the rollback action is registered.
+   * @returns {Promise<DeleteObjectCommandOutput>} A promise that resolves with the result of the `deleteObject` command.
    */
-  public async deleteObject(params: S3ObjectParams): Promise<void> {
+  public async deleteObject(
+    params: S3ObjectParams
+  ): Promise<DeleteObjectCommandOutput> {
     await this.rollbackStrategy.backupFile(params);
-    await this.connection.send(new DeleteObjectCommand(params));
+    const result = await this.connection.send(new DeleteObjectCommand(params));
 
     const rollbackAction = async () => {
       await this.rollbackStrategy.restoreFile(params);
     };
 
     this.rollbackActions.push(rollbackAction);
+
+    return result;
   }
 
   /**
    * Creates a new S3 bucket and stores a rollback action.
    *
    * @param {S3BucketParams} params - The parameters for the S3 `createBucket` command (Bucket, etc.).
-   * @returns {Promise<void>} A promise that resolves once the bucket is created and the rollback action is registered.
+   * @returns {Promise<CreateBucketCommandOutput>} A promise that resolves with the result of the `createBucket` command.
    */
-  public async createBucket(params: S3BucketParams): Promise<void> {
-    await this.connection.send(new CreateBucketCommand(params));
+  public async createBucket(
+    params: S3BucketParams
+  ): Promise<CreateBucketCommandOutput> {
+    const result = await this.connection.send(new CreateBucketCommand(params));
 
     const rollbackAction = async () => {
       await this.connection.send(new DeleteBucketCommand(params));
     };
 
     this.rollbackActions.push(rollbackAction);
+
+    return result;
   }
 
   /**
    * Deletes an S3 bucket and stores a rollback action.
    *
    * @param {S3BucketParams} params - The parameters for the S3 `deleteBucket` command (Bucket, etc.).
-   * @returns {Promise<void>} A promise that resolves once the bucket is deleted and the rollback action is registered.
+   * @returns {Promise<DeleteBucketCommandOutput>} A promise that resolves with the result of the `deleteBucket` command.
    */
-  public async deleteBucket(params: S3BucketParams): Promise<void> {
+  public async deleteBucket(
+    params: S3BucketParams
+  ): Promise<DeleteBucketCommandOutput> {
     await this.rollbackStrategy.backupBucket(params);
-    await this.connection.send(new DeleteBucketCommand(params));
+    const result = await this.connection.send(new DeleteBucketCommand(params));
 
     const rollbackAction = async () => {
       await this.rollbackStrategy.restoreBucket(params);
     };
 
     this.rollbackActions.push(rollbackAction);
+
+    return result;
   }
 
   /**
@@ -155,7 +174,7 @@ export class S3RollbackClient extends RollbackableClient {
   public async getObject(
     params: S3ObjectParams
   ): Promise<GetObjectCommandOutput> {
-    return this.connection.send(new GetObjectCommand(params));
+    return await this.connection.send(new GetObjectCommand(params));
   }
 
   /**
@@ -167,14 +186,14 @@ export class S3RollbackClient extends RollbackableClient {
   public async listBuckets(
     params: ListBucketsCommandInput
   ): Promise<ListBucketsCommandOutput> {
-    return this.connection.send(new ListBucketsCommand(params));
+    return await this.connection.send(new ListBucketsCommand(params));
   }
 
   /**
    * Retrieves the metadata of an object from the specified S3 bucket.
    *
    * @param {S3ObjectParams} params - The parameters for the S3 `headObject` command (Bucket, Key, etc.).
-   * @returns {Promise<void>} A promise that resolves once the metadata is retrieved.
+   * @returns {Promise<HeadObjectCommandOutput>} A promise that resolves with the metadata of the object.
    */
   public async headObject(
     params: S3ObjectParams
@@ -186,7 +205,7 @@ export class S3RollbackClient extends RollbackableClient {
    * Retrieves the metadata of a bucket.
    *
    * @param {S3BucketParams} params - The parameters for the S3 `headBucket` command (Bucket, etc.).
-   * @returns {Promise<void>} A promise that resolves once the metadata is retrieved.
+   * @returns {Promise<HeadBucketCommandOutput>} A promise that resolves with the metadata of the bucket.
    */
   public async headBucket(
     params: S3BucketParams
