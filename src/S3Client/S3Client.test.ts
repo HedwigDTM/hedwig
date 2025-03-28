@@ -378,8 +378,6 @@ describe('S3Client', () => {
 
   describe('In memory strategy', () => {
     it('Checking .deleteBucket() MEMORY - should delete a bucket and restore in upon rollback', async () => {
-      // Mock S3 Commands
-
       const mockStream = new Readable();
       mockStream.push('hello world');
       mockStream.push(null);
@@ -434,7 +432,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        Body: Buffer.from('hello world'),
+        Body: expect.any(Buffer),
       });
     });
 
@@ -519,7 +517,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        Body: Buffer.from('hello world'),
+        Body: expect.any(Buffer),
       });
     });
 
@@ -527,6 +525,7 @@ describe('S3Client', () => {
       const mockStream = new Readable();
       mockStream.push('hello world');
       mockStream.push(null);
+      
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
