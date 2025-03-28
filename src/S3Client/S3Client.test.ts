@@ -432,7 +432,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        Body: expect.any(Buffer),
+        Body: expect.any(Uint8Array),
       });
     });
 
@@ -517,7 +517,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        Body: expect.any(Readable),
+        Body: expect.any(Uint8Array),
       });
     });
 
