@@ -140,9 +140,6 @@ describe('TransactionManager Integration Tests', () => {
       ContentType: 'text/plain',
     });
 
-    // Set up initial state
-    redisConnection.get.mockResolvedValueOnce('initial-value');
-
     // Attempt transaction that will fail
     await expect(
       transactionManager.transaction(async ({ S3Client, RedisClient }) => {
@@ -186,16 +183,13 @@ describe('TransactionManager Integration Tests', () => {
     });
 
     // Verify Redis operations sequence
+    expect(redisConnection.exists).toHaveBeenNthCalledWith(1, TEST_REDIS_KEY);
     expect(redisConnection.set).toHaveBeenNthCalledWith(
       1,
       TEST_REDIS_KEY,
       'new-value'
     );
-    expect(redisConnection.set).toHaveBeenNthCalledWith(
-      2,
-      TEST_REDIS_KEY,
-      'initial-value'
-    );
+    expect(redisConnection.del).toHaveBeenNthCalledWith(1, TEST_REDIS_KEY);
   });
 
   it('should handle concurrent transactions correctly', async () => {

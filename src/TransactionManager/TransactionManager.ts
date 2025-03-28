@@ -54,6 +54,7 @@ export default class TransactionManager {
     if (this.redisConfig) {
       clients.RedisClient = new RedisRollbackClient(
         transactionID,
+        // If the user provided already established connection, use it
         this.redisConfig.connection ||
           (await (createClient(this.redisConfig) as RedisClientType).connect()),
         this.redisConfig.rollbackStrategy
