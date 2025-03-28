@@ -73,13 +73,13 @@ export class S3RollbackClient extends RollbackableClient {
   public async putObject(params: S3ObjectParams): Promise<void> {
     let objExisted = false;
 
-    this.connection
-      .send(new HeadObjectCommand(params))
-      .then(() => {
-        objExisted = true;
-        this.rollbackStrategy.backupFile(params);
-      })
-      .catch(() => {});
+    try {
+      await this.connection.send(new HeadObjectCommand(params));
+      objExisted = true;
+      await this.rollbackStrategy.backupFile(params);
+    } catch (error) {
+      // Object doesn't exist, continue with put operation
+    }
 
     await this.connection.send(new PutObjectCommand(params));
 
