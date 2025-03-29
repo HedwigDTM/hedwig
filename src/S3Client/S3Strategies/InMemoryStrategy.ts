@@ -7,18 +7,28 @@ import {
 } from '@aws-sdk/client-s3';
 import { S3BucketParams, S3ObjectParams } from '../S3Client';
 import { S3RollBackStrategy } from '../S3RollbackStrategy';
-import { Readable } from 'stream';
 import { S3BackupError, S3RestoreError } from '../S3RollbackFactory';
+
+interface S3BucketBackup {
+  objects: Map<string, Uint8Array>;
+}
+
+interface S3InMemoryStorage {
+  buckets: Map<string, S3BucketBackup>;
+}
 
 /**
  * Class to handle in-memory delete, backup and restore of S3 objects.
  * Implements the iS3Backuper interface.
  */
 export class InMemoryStrategy extends S3RollBackStrategy {
-  private inMemoryStorage: Map<string, Map<string, Buffer>> = new Map();
+  private storage: S3InMemoryStorage;
 
   constructor(_connection: AWSClient) {
     super(_connection);
+    this.storage = {
+      buckets: new Map(),
+    };
   }
 
   /**
@@ -36,13 +46,21 @@ export class InMemoryStrategy extends S3RollBackStrategy {
           Key,
         })
       );
-      if (!this.inMemoryStorage.has(Bucket)) {
-        this.inMemoryStorage.set(Bucket, new Map());
+
+      // Initialize bucket if it doesn't exist
+      if (!this.storage.buckets.has(Bucket)) {
+        this.storage.buckets.set(Bucket, {
+          objects: new Map(),
+        });
       }
-      const bucketMap = this.inMemoryStorage.get(Bucket) as Map<string, Buffer>;
-      bucketMap.set(Key, await this.streamToBuffer(data.Body as Readable));
+
+      const bucketBackup = this.storage.buckets.get(Bucket)!;
+      if (!data.Body) {
+        throw new S3BackupError(`No data found in the S3 object: ${Key}`);
+      }
+      bucketBackup.objects.set(Key, await data.Body.transformToByteArray());
     } catch (error) {
-      throw new S3BackupError();
+      throw new S3BackupError(`Failed to backup file from S3: ${error}`);
     }
   }
 
@@ -51,7 +69,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
    * @returns {Promise<void>}
    */
   public async closeTransaction(): Promise<void> {
-    this.inMemoryStorage.clear();
+    this.storage.buckets.clear();
   }
 
   /**
@@ -60,21 +78,28 @@ export class InMemoryStrategy extends S3RollBackStrategy {
    * @returns {Promise<void>}
    */
   public async restoreFile(params: S3ObjectParams): Promise<void> {
-    if (!this.inMemoryStorage) {
-      throw new S3RestoreError('No backup found in inMemory storage');
-    } else {
-      try {
-        const { Bucket, Key } = params;
-        await this.connection.send(
-          new PutObjectCommand({
-            Bucket,
-            Key,
-            Body: this.inMemoryStorage.get(Bucket)?.get(Key) as Buffer,
-          })
-        );
-      } catch {
-        throw new S3RestoreError();
-      }
+    const { Bucket, Key } = params;
+    const bucketBackup = this.storage.buckets.get(Bucket);
+    
+    if (!bucketBackup) {
+      throw new S3RestoreError('No backup found for the specified bucket');
+    }
+
+    const objectBackup = bucketBackup.objects.get(Key);
+    if (!objectBackup) {
+      throw new S3RestoreError('No backup data found for the specified file');
+    }
+
+    try {
+      await this.connection.send(
+        new PutObjectCommand({
+          Bucket,
+          Key,
+          Body: objectBackup,
+        })
+      );
+    } catch (error) {
+      throw new S3RestoreError(`Failed to restore file to S3: ${error}`);
     }
   }
 
@@ -85,33 +110,47 @@ export class InMemoryStrategy extends S3RollBackStrategy {
    */
   public async backupBucket(params: S3BucketParams): Promise<void> {
     try {
-      const listResponse = await this.connection.send(
-        new ListObjectsCommand(params)
-      );
+      let nextMarker: string | undefined;
+      const bucketBackup: S3BucketBackup = {
+        objects: new Map(),
+      };
 
-      if (!listResponse.Contents) {
-        this.inMemoryStorage.set(params.Bucket, new Map());
-      } else {
-        for (const obj of listResponse.Contents) {
-          const data = await this.connection.send(
-            new GetObjectCommand({
-              Bucket: params.Bucket,
-              Key: obj.Key,
-            })
-          );
-          const buffer = await this.streamToBuffer(data.Body as Readable);
-          if (!this.inMemoryStorage.has(params.Bucket)) {
-            this.inMemoryStorage.set(params.Bucket, new Map());
-          }
-          const bucketMap = this.inMemoryStorage.get(params.Bucket);
-          if (!bucketMap) {
-            throw new S3BackupError();
-          }
-          bucketMap.set(obj.Key!, buffer);
+      do {
+        const listResponse = await this.connection.send(
+          new ListObjectsCommand({
+            ...params,
+            Marker: nextMarker,
+          })
+        );
+
+        if (!listResponse.Contents) {
+          break;
         }
-      }
+
+        await Promise.all(
+          listResponse.Contents.map(async (obj) => {
+            if (!obj.Key) {
+              throw new S3BackupError('Object key is undefined');
+            }
+            const data = await this.connection.send(
+              new GetObjectCommand({
+                Bucket: params.Bucket,
+                Key: obj.Key,
+              })
+            );
+            if (!data.Body) {
+              throw new S3BackupError('No data found in the S3 object');
+            }
+            bucketBackup.objects.set(obj.Key, await data.Body.transformToByteArray());
+          })
+        );
+
+        nextMarker = listResponse.NextMarker;
+      } while (nextMarker);
+
+      this.storage.buckets.set(params.Bucket, bucketBackup);
     } catch (error) {
-      throw new S3BackupError();
+      throw new S3BackupError(`Failed to backup bucket from S3: ${error}`);
     }
   }
 
@@ -121,41 +160,28 @@ export class InMemoryStrategy extends S3RollBackStrategy {
    * @returns {Promise<void>}
    */
   public async restoreBucket(params: S3BucketParams): Promise<void> {
-    if (!this.inMemoryStorage) {
-      throw new S3RestoreError('No backup found in inMemory storage');
-    } else {
-      try {
-        await this.connection.send(new CreateBucketCommand(params));
-        const backupMap = this.inMemoryStorage.get(params.Bucket);
-        if (!backupMap) {
-          throw new S3RestoreError('No backup found in inMemory storage');
-        }
-        for (const [key, value] of backupMap) {
+    const bucketBackup = this.storage.buckets.get(params.Bucket);
+    
+    if (!bucketBackup) {
+      throw new S3RestoreError('No backup found for the specified bucket');
+    }
+
+    try {
+      await this.connection.send(new CreateBucketCommand(params));
+
+      await Promise.all(
+        Array.from(bucketBackup.objects.entries()).map(async ([key, object]) => {
           await this.connection.send(
             new PutObjectCommand({
               Bucket: params.Bucket,
               Key: key,
-              Body: value,
+              Body: object,
             })
           );
-        }
-      } catch {
-        throw new S3RestoreError();
-      }
+        })
+      );
+    } catch (error) {
+      throw new S3RestoreError(`Failed to restore bucket to S3: ${error}`);
     }
-  }
-
-  /**
-   * Converts a readable stream to a buffer.
-   * @param {Readable} stream - The readable stream to convert.
-   * @returns {Promise<Buffer>}
-   */
-  private async streamToBuffer(stream: Readable): Promise<Buffer> {
-    return new Promise<Buffer>((resolve, reject) => {
-      const chunks: any[] = [];
-      stream.on('data', (chunk) => chunks.push(chunk));
-      stream.on('error', (err) => reject(err));
-      stream.on('end', () => resolve(Buffer.concat(chunks)));
-    });
   }
 }

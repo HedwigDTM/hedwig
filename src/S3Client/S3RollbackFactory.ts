@@ -4,6 +4,8 @@ import { S3Client as AWSClient } from '@aws-sdk/client-s3';
 import { S3RollBackStrategy } from './S3RollbackStrategy';
 import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
 
+const DEFAULT_BACKUP_BUCKET_NAME = 'hedwig-backups';
+
 /**
  * Custom error class for backup operations.
  */
@@ -36,7 +38,7 @@ export const S3RollbackFactory = (
     case S3RollbackStrategyType.DUPLICATE_FILE: {
       return new DuplicateStrategy(
         connection,
-        backupBucketName ? backupBucketName : 'hedwig-backups'
+        backupBucketName ? backupBucketName : DEFAULT_BACKUP_BUCKET_NAME
       );
     }
     default:

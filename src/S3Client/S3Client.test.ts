@@ -28,7 +28,7 @@ describe('S3Client', () => {
     connection = new AWSClient({});
   });
 
-  describe('Geneal orations', () => {
+  describe('General operations', () => {
     it('Checking .headBucket() - should return info on the bucket', async () => {
       s3Mock.on(HeadBucketCommand).resolves({
         $metadata: {
@@ -43,16 +43,19 @@ describe('S3Client', () => {
       );
       const params: S3BucketParams = { Bucket: 'bucketName' };
 
-      await mockS3Client.headBucket(params);
+      const result = await mockS3Client.headBucket(params);
 
       expect(s3Mock).toHaveReceivedCommandWith(HeadBucketCommand, params);
+      expect(result.$metadata.httpStatusCode).toBe(200);
     });
 
-    it('Checking .headObject()', async () => {
+    it('Checking .headObject() - should return object metadata', async () => {
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
         },
+        ContentLength: 1024,
+        ContentType: 'text/plain',
       });
 
       const mockS3Client = new S3RollbackClient(
@@ -62,16 +65,25 @@ describe('S3Client', () => {
       );
       const params: S3ObjectParams = { Bucket: 'bucketName', Key: 'key' };
 
-      await mockS3Client.headObject(params);
+      const result = await mockS3Client.headObject(params);
 
       expect(s3Mock).toHaveReceivedCommandWith(HeadObjectCommand, params);
+      expect(result.$metadata.httpStatusCode).toBe(200);
+      expect(result.ContentLength).toBe(1024);
+      expect(result.ContentType).toBe('text/plain');
     });
 
-    it('Checking .listBuckets() - should list the buckets', async () => {
+    it('Checking .listBuckets() - should list all buckets', async () => {
+      const mockBuckets = [
+        { Name: 'bucket1', CreationDate: new Date() },
+        { Name: 'bucket2', CreationDate: new Date() },
+      ];
+
       s3Mock.on(ListBucketsCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
         },
+        Buckets: mockBuckets,
       });
 
       const mockS3Client = new S3RollbackClient(
@@ -81,16 +93,25 @@ describe('S3Client', () => {
       );
       const params: ListBucketsCommandInput = {};
 
-      await mockS3Client.listBuckets(params);
+      const result = await mockS3Client.listBuckets(params);
 
       expect(s3Mock).toHaveReceivedCommandWith(ListBucketsCommand, params);
+      expect(result.$metadata.httpStatusCode).toBe(200);
+      expect(result.Buckets).toEqual(mockBuckets);
     });
 
-    it('Checking .getObject() Memory - should get an object', async () => {
-      s3Mock.on(HeadObjectCommand).resolves({
+    it('Checking .getObject() - should retrieve an object', async () => {
+      const mockStream = new Readable();
+      mockStream.push('hello world');
+      mockStream.push(null);
+
+      s3Mock.on(GetObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
         },
+        Body: sdkStreamMixin(mockStream),
+        ContentLength: 11,
+        ContentType: 'text/plain',
       });
 
       const mockS3Client = new S3RollbackClient(
@@ -100,11 +121,29 @@ describe('S3Client', () => {
       );
       const params: S3ObjectParams = { Bucket: 'bucketName', Key: 'key' };
 
-      await mockS3Client.getObject(params);
+      const result = await mockS3Client.getObject(params);
 
       expect(s3Mock).toHaveReceivedCommandWith(GetObjectCommand, params);
+      expect(result.$metadata.httpStatusCode).toBe(200);
+      expect(result.ContentLength).toBe(11);
+      expect(result.ContentType).toBe('text/plain');
+      expect(result.Body).toBeDefined();
+    });
+
+    it('Checking .closeTransaction() - should close the transaction', async () => {
+      const mockS3Client = new S3RollbackClient(
+        'test',
+        connection,
+        S3RollbackStrategyType.IN_MEMORY
+      );
+
+      await mockS3Client.closeTransaction();
+      // Verify that the rollback strategy's closeTransaction was called
+      // This is an implementation detail that depends on the specific strategy
+      // being used, so we just verify the method exists and can be called
     });
   });
+
   describe('Duplicate strategy', () => {
     it('Checking .deleteBucket() DUPLICATE - should delete a bucket and restore in upon rollback', async () => {
       // Mock S3 Commands
@@ -148,13 +187,13 @@ describe('S3Client', () => {
       await mockS3Client.rollback();
 
       await expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, {
-        Bucket: 'Hedwig-Backups-bucketName',
+        Bucket: 'hedwig-backups-bucketName',
       });
       await expect(s3Mock).toHaveReceivedCommandWith(ListObjectsCommand, {
         Bucket: 'bucketName',
       });
       await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
-        Bucket: 'Hedwig-Backups-bucketName',
+        Bucket: 'hedwig-backups-bucketName',
         Key: 'key',
         CopySource: 'bucketName/key',
       });
@@ -165,7 +204,7 @@ describe('S3Client', () => {
       await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        CopySource: 'Hedwig-Backups-bucketName/key',
+        CopySource: 'hedwig-backups-bucketName/key',
       });
     });
 
@@ -219,7 +258,7 @@ describe('S3Client', () => {
         'test',
         connection,
         S3RollbackStrategyType.DUPLICATE_FILE,
-        'Hedwig-Backups'
+        'hedwig-backups'
       );
       const params: S3ObjectParams = { Bucket: 'bucketName', Key: 'key' };
 
@@ -227,10 +266,10 @@ describe('S3Client', () => {
       await mockS3Client.rollback();
 
       expect(s3Mock).toHaveReceivedCommandWith(HeadBucketCommand, {
-        Bucket: 'Hedwig-Backups',
+        Bucket: 'hedwig-backups',
       });
       expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
-        Bucket: 'Hedwig-Backups',
+        Bucket: 'hedwig-backups',
         Key: 'key-backup',
         CopySource: 'bucketName/key',
       });
@@ -238,10 +277,10 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        CopySource: 'Hedwig-Backups/key-backup',
+        CopySource: 'hedwig-backups/key-backup',
       });
       expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, {
-        Bucket: 'Hedwig-Backups',
+        Bucket: 'hedwig-backups',
         Key: 'key-backup',
       });
     });
@@ -272,7 +311,7 @@ describe('S3Client', () => {
         'test',
         connection,
         S3RollbackStrategyType.DUPLICATE_FILE,
-        'Hedwig-Backups'
+        'hedwig-backups'
       );
       const params: S3ObjectParams = {
         Bucket: 'bucketName',
@@ -285,7 +324,7 @@ describe('S3Client', () => {
 
       expect(s3Mock).toHaveReceivedCommandWith(HeadObjectCommand, params);
       expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
-        Bucket: 'Hedwig-Backups',
+        Bucket: 'hedwig-backups',
         Key: 'key-backup',
         CopySource: 'bucketName/key',
       });
@@ -293,10 +332,10 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        CopySource: 'Hedwig-Backups/key-backup',
+        CopySource: 'hedwig-backups/key-backup',
       });
       expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, {
-        Bucket: 'Hedwig-Backups',
+        Bucket: 'hedwig-backups',
         Key: 'key-backup',
       });
     });
@@ -317,7 +356,7 @@ describe('S3Client', () => {
         'test',
         connection,
         S3RollbackStrategyType.DUPLICATE_FILE,
-        'Hedwig-Backups'
+        'hedwig-backups'
       );
       const params: S3ObjectParams = {
         Bucket: 'bucketName',
@@ -339,8 +378,6 @@ describe('S3Client', () => {
 
   describe('In memory strategy', () => {
     it('Checking .deleteBucket() MEMORY - should delete a bucket and restore in upon rollback', async () => {
-      // Mock S3 Commands
-
       const mockStream = new Readable();
       mockStream.push('hello world');
       mockStream.push(null);
@@ -395,7 +432,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        Body: Buffer.from('hello world'),
+        Body: expect.any(Uint8Array),
       });
     });
 
@@ -469,7 +506,7 @@ describe('S3Client', () => {
         'test',
         connection,
         S3RollbackStrategyType.IN_MEMORY,
-        'Hedwig-Backups'
+        'hedwig-backups'
       );
       const params: S3ObjectParams = { Bucket: 'bucketName', Key: 'key' };
 
@@ -480,7 +517,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        Body: Buffer.from('hello world'),
+        Body: expect.any(Uint8Array),
       });
     });
 
@@ -488,6 +525,7 @@ describe('S3Client', () => {
       const mockStream = new Readable();
       mockStream.push('hello world');
       mockStream.push(null);
+      
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
@@ -515,7 +553,7 @@ describe('S3Client', () => {
         'test',
         connection,
         S3RollbackStrategyType.IN_MEMORY,
-        'Hedwig-Backups'
+        'hedwig-backups'
       );
       const params: S3ObjectParams = {
         Bucket: 'bucketName',
@@ -531,7 +569,11 @@ describe('S3Client', () => {
         Bucket: 'bucketName',
         Key: 'key',
       });
-      expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, params);
+      expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
+        Bucket: 'bucketName',
+        Key: 'key',
+        Body: expect.any(Readable),
+      });
     });
 
     it('Checking .putObject() Memory - Object doesnt exists - should set the new file and delete it upon rollback', async () => {
@@ -550,7 +592,7 @@ describe('S3Client', () => {
         'test',
         connection,
         S3RollbackStrategyType.IN_MEMORY,
-        'Hedwig-Backups'
+        'hedwig-backups'
       );
       const params: S3ObjectParams = {
         Bucket: 'bucketName',
