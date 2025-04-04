@@ -10,7 +10,7 @@ import {
   HeadBucketCommand,
   DeleteBucketCommand,
   ListObjectsCommandInput,
-  _Object,
+  _Object
 } from '@aws-sdk/client-s3';
 
 export class DuplicateStrategy extends S3RollBackStrategy {
@@ -124,11 +124,54 @@ export class DuplicateStrategy extends S3RollBackStrategy {
   }
 
   public async closeTransaction(): Promise<void> {
-    await this.connection.send(
-      new DeleteBucketCommand({
-        Bucket: this.backupsBucketName,
-      })
-    );
+    try {
+      let marker: string | undefined;
+      const objectsToDelete: _Object[] = [];
+
+      // List all objects in the backup bucket using continuation tokens
+      do {
+        const listObjectsResponse = await this.connection.send(
+          new ListObjectsCommand({
+            Bucket: this.backupsBucketName,
+            Marker: marker,
+          })
+        );
+
+        if (listObjectsResponse.Contents) {
+          objectsToDelete.push(...listObjectsResponse.Contents);
+        }
+
+        marker = listObjectsResponse.NextMarker;
+      } while (marker);
+
+      // Delete all objects in the bucket
+      if (objectsToDelete.length > 0) {
+        await Promise.all(
+          objectsToDelete.map((object) =>
+            this.connection.send(
+              new DeleteObjectCommand({
+                Bucket: this.backupsBucketName,
+                Key: object.Key,
+              })
+            )
+          )
+        );
+      }
+
+      // Delete the backup bucket itself
+      await this.connection.send(
+        new DeleteBucketCommand({
+          Bucket: this.backupsBucketName,
+        })
+      );
+    } catch (error: any) {
+      // If the bucket doesn't exist, that's fine - we can ignore this error
+      if (error.name === 'NoSuchBucket' || error.$metadata?.httpStatusCode === 404) {
+        return;
+      }
+      // For any other error, rethrow it
+      throw error;
+    }
   }
 
   /**

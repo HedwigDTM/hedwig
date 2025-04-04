@@ -133,11 +133,21 @@ export class S3RollbackClient extends RollbackableClient {
   public async createBucket(
     params: S3BucketParams
   ): Promise<CreateBucketCommandOutput> {
+    let bucketExists = false;
+    try {
+      await this.connection.send(new HeadBucketCommand(params));
+      bucketExists = true;
+    } catch (error) {
+      // Bucket doesn't exist
+    }
+
     const result = await this.connection.send(new CreateBucketCommand(params));
 
-    const rollbackAction = async () => {
-      await this.connection.send(new DeleteBucketCommand(params));
-    };
+    const rollbackAction = !bucketExists
+      ? async () => {
+          await this.connection.send(new DeleteBucketCommand(params));
+        }
+      : async () => {};
 
     this.rollbackActions.push(rollbackAction);
 
@@ -178,15 +188,21 @@ export class S3RollbackClient extends RollbackableClient {
   }
 
   /**
-   * Lists all S3 buckets.
+   * Lists all S3 buckets with pagination support.
    *
    * @param {ListBucketsCommandInput} params - The parameters for the S3 `listBuckets` command.
+   * @param {string} [continuationToken] - Token used for pagination to retrieve the next set of buckets.
    * @returns {Promise<ListBucketsCommandOutput>} A promise that resolves with the list of buckets.
    */
   public async listBuckets(
-    params: ListBucketsCommandInput
+    params: ListBucketsCommandInput,
+    continuationToken?: string
   ): Promise<ListBucketsCommandOutput> {
-    return await this.connection.send(new ListBucketsCommand(params));
+    const commandParams = continuationToken 
+      ? { ...params, ContinuationToken: continuationToken } 
+      : params;
+    
+    return await this.connection.send(new ListBucketsCommand(commandParams));
   }
 
   /**

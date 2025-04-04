@@ -24,10 +24,10 @@ const main = async () => {
     if (S3Client) {
       try {
         await S3Client.createBucket({
-          Bucket: 'my-local-bucket',
+          Bucket: 'my-new-bucket',
         });
         await S3Client.putObject({
-          Bucket: 'my-local-bucket',
+          Bucket: 'my-new-bucket',
           Key: 'V1',
           Body: Buffer.from('value1', 'utf-8'),
         });
@@ -37,17 +37,15 @@ const main = async () => {
     }
 
     console.log(
-      (await S3Client?.getObject({ Bucket: 'my-local-bucket', Key: 'V1' }))
+      (await S3Client?.getObject({ Bucket: 'my-new-bucket', Key: 'V1' }))
         ?.Metadata
     );
 
     if (RedisClient) {
-      await RedisClient.set('key1', 'value1');
+      await RedisClient.set('mykey1', 'value1');
     }
 
-    throw new Error('dfkgd');
-
-    process.exit();
+    // throw new Error('dfkgd');
   });
 };
 main();
