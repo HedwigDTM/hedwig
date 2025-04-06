@@ -10,7 +10,7 @@ import {
   HeadBucketCommand,
   DeleteBucketCommand,
   ListObjectsCommandInput,
-  _Object
+  _Object,
 } from '@aws-sdk/client-s3';
 
 export class DuplicateStrategy extends S3RollBackStrategy {
@@ -166,7 +166,10 @@ export class DuplicateStrategy extends S3RollBackStrategy {
       );
     } catch (error: any) {
       // If the bucket doesn't exist, that's fine - we can ignore this error
-      if (error.name === 'NoSuchBucket' || error.$metadata?.httpStatusCode === 404) {
+      if (
+        error.name === 'NoSuchBucket' ||
+        error.$metadata?.httpStatusCode === 404
+      ) {
         return;
       }
       // For any other error, rethrow it

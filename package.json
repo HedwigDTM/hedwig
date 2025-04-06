@@ -1,5 +1,5 @@
 {
-  "name": "hedwig",
+  "name": "@hedwig/dtm",
   "version": "1.0.0",
   "description": "a distributed transactions library",
   "main": "index.js",
