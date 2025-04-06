@@ -209,6 +209,7 @@ describe('S3Client', () => {
     });
 
     it('Checking .createBucket - should create a bucket and delete it upon rollback', async () => {
+      s3Mock.on(HeadBucketCommand).rejects(new Error('Bucket does not exist'));
       s3Mock.on(CreateBucketCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
@@ -231,6 +232,7 @@ describe('S3Client', () => {
       await mockS3Client.createBucket(params);
       await mockS3Client.rollback();
 
+      expect(s3Mock).toHaveReceivedCommandWith(HeadBucketCommand, params);
       expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, params);
       expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
     });
@@ -437,6 +439,7 @@ describe('S3Client', () => {
     });
 
     it('Checking .createBucket Memory - should create a bucket and delete it upon rollback', async () => {
+      s3Mock.on(HeadBucketCommand).rejects(new Error('Bucket does not exist'));
       s3Mock.on(CreateBucketCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
@@ -459,6 +462,7 @@ describe('S3Client', () => {
       await mockS3Client.createBucket(params);
       await mockS3Client.rollback();
 
+      expect(s3Mock).toHaveReceivedCommandWith(HeadBucketCommand, params);
       expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, params);
       expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
     });
