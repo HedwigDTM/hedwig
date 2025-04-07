@@ -1,8 +1,8 @@
 {
   "name": "@hedwig-team/dtm",
-  "version": "1.0.2",
+  "version": "1.0.1",
   "description": "a distributed transactions library",
-  "main": "dist/index.js",
+  "main": "index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
