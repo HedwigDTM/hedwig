@@ -3,8 +3,8 @@ import { createClient, RedisClientType } from 'redis';
 import TransactionManager from './TransactionManager';
 import { S3RollbackClient } from '../S3Client/S3Client';
 import { RedisRollbackClient } from '../RedisClient/RedisClient';
-import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
-import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
+import { RedisRollbackStrategyType } from '../types/redis';
+import { S3RollbackStrategyType } from '../types/s3';
 import RollbackError from '../RollbackableClient/Errors/RollbackError';
 
 jest.mock('../S3Client/S3Client');

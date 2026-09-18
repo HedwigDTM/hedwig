@@ -1,8 +1,6 @@
 import { RedisConnection } from '../RedisConnection';
-import {
-  RedisBackupRecord,
-  RedisRollBackStrategy,
-} from '../RedisRollbackStrategy';
+import { RedisRollBackStrategy } from '../RedisRollbackStrategy';
+import { RedisBackupRecord } from '../../types/redis';
 import RollbackError from '../../RollbackableClient/Errors/RollbackError';
 
 /**

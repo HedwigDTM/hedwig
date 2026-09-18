@@ -1,7 +1,7 @@
 import RollbackableClient from '../RollbackableClient/RollbackableClient';
 import { RedisConnection } from './RedisConnection';
 import { RedisRollBackStrategy } from './RedisRollbackStrategy';
-import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
+import { RedisRollbackStrategyType } from '../types/redis';
 import { RedisRollbackFactory } from './RedisRollbackFactory';
 
 export class RedisRollbackClient extends RollbackableClient {

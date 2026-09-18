@@ -1,15 +1,13 @@
 import { S3RollbackClient } from '../S3Client/S3Client';
 import { v4 as uuidv4 } from 'uuid';
-import { S3Config } from '../Types/S3/S3Config';
 import { S3Client } from '@aws-sdk/client-s3';
+import { S3Config, S3RollbackStrategyType } from '../types/s3';
+import { RedisConfig, RedisRollbackStrategyType } from '../types/redis';
+import { RedisRollbackClient } from '../RedisClient/RedisClient';
 import {
   TransactionCallbackFunction,
   TransactionManagerConfig,
-} from '../Types/TransactionManger.ts';
-import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
-import { RedisConfig } from '../Types/Redis/RedisConfig';
-import { RedisRollbackClient } from '../RedisClient/RedisClient';
-import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
+} from '../types/transaction-manager';
 import { createClient, RedisClientType } from 'redis';
 import RollbackError from '../RollbackableClient/Errors/RollbackError';
 

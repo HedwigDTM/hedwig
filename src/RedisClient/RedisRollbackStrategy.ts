@@ -1,12 +1,6 @@
+import { RedisBackupRecord } from '../types/redis';
 import { RedisConnection } from './RedisConnection';
 
-/**
- * Snapshot of a key's state before a transaction touched it.
- * Uses a discriminated union so absence is explicit (never truthiness).
- */
-export type RedisBackupRecord =
-  | { existed: true; value: string }
-  | { existed: false; value: null };
 export abstract class RedisRollBackStrategy {
   protected connection: RedisConnection;
 
