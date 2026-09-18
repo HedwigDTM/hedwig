@@ -60,6 +60,7 @@ export class S3RollbackClient extends RollbackableClient {
     this.rollbackStrategy = S3RollbackFactory(
       this.connection,
       rollbackStrategyType,
+      transactionID,
       backupBucketName
     );
   }
@@ -198,10 +199,10 @@ export class S3RollbackClient extends RollbackableClient {
     params: ListBucketsCommandInput,
     continuationToken?: string
   ): Promise<ListBucketsCommandOutput> {
-    const commandParams = continuationToken 
-      ? { ...params, ContinuationToken: continuationToken } 
+    const commandParams = continuationToken
+      ? { ...params, ContinuationToken: continuationToken }
       : params;
-    
+
     return await this.connection.send(new ListBucketsCommand(commandParams));
   }
 

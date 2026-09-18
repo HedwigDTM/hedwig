@@ -29,6 +29,7 @@ export class S3RestoreError extends Error {
 export const S3RollbackFactory = (
   connection: AWSClient,
   strategy: S3RollbackStrategyType,
+  transactionID: string,
   backupBucketName?: string
 ): S3RollBackStrategy => {
   switch (strategy) {
@@ -38,6 +39,7 @@ export const S3RollbackFactory = (
     case S3RollbackStrategyType.DUPLICATE_FILE: {
       return new DuplicateStrategy(
         connection,
+        transactionID,
         backupBucketName ? backupBucketName : DEFAULT_BACKUP_BUCKET_NAME
       );
     }

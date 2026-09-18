@@ -98,13 +98,49 @@ describe('RedisClient', () => {
     await expect(connection.exists).toHaveBeenCalledWith('key');
     await expect(connection.get).toHaveBeenCalledWith('key');
     await expect(connection.hSet).toHaveBeenCalledWith(
-      'backupHashName',
+      'backupHashName:test',
       'key',
       'previousValue'
     );
     await expect(connection.set).toHaveBeenCalledWith('key', 'newValue');
-    await expect(connection.hGet).toHaveBeenCalledWith('backupHashName', 'key');
+    await expect(connection.hGet).toHaveBeenCalledWith(
+      'backupHashName:test',
+      'key'
+    );
     await expect(connection.set).toHaveBeenCalledWith('key', 'previousValue');
+  });
+
+  it('Checking .set DUPLICATE FILE - concurrent transactions use isolated backup hashes', async () => {
+    connection.exists.mockResolvedValue(1);
+    connection.set.mockResolvedValue('OK');
+    connection.get.mockResolvedValue('previousValue');
+    connection.hSet.mockResolvedValue(1);
+
+    const clientA = new RedisRollbackClient(
+      'tx-a',
+      connection,
+      RedisRollbackStrategyType.DUPLICATE_FILE,
+      'backupHashName'
+    );
+    const clientB = new RedisRollbackClient(
+      'tx-b',
+      connection,
+      RedisRollbackStrategyType.DUPLICATE_FILE,
+      'backupHashName'
+    );
+    await clientA.set('key', 'newValue');
+    await clientB.set('key', 'newValue');
+
+    await expect(connection.hSet).toHaveBeenCalledWith(
+      'backupHashName:tx-a',
+      'key',
+      'previousValue'
+    );
+    await expect(connection.hSet).toHaveBeenCalledWith(
+      'backupHashName:tx-b',
+      'key',
+      'previousValue'
+    );
   });
 
   it('Checking .del IN MEMORY - item exists - should delete and rollback to old value', async () => {
@@ -144,11 +180,14 @@ describe('RedisClient', () => {
     await expect(connection.get).toHaveBeenCalledWith('key');
     await expect(connection.del).toHaveBeenCalledWith('key');
     await expect(connection.hSet).toHaveBeenCalledWith(
-      'backupHashName',
+      'backupHashName:test',
       'key',
       'value'
     );
-    await expect(connection.hGet).toHaveBeenCalledWith('backupHashName', 'key');
+    await expect(connection.hGet).toHaveBeenCalledWith(
+      'backupHashName:test',
+      'key'
+    );
     await expect(connection.set).toHaveBeenCalledWith('key', 'value');
   });
 

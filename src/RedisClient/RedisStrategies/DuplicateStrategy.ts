@@ -8,9 +8,13 @@ import RollbackError from '../../RollbackableClient/Errors/RollbackError';
 export class DuplicateStrategy extends RedisRollBackStrategy {
   private backupHashName: string;
 
-  constructor(_connection: RedisClientType, backupHashName: string) {
+  constructor(
+    _connection: RedisClientType,
+    transactionID: string,
+    backupHashName: string
+  ) {
     super(_connection);
-    this.backupHashName = backupHashName;
+    this.backupHashName = `${backupHashName}:${transactionID}`;
   }
 
   /**
