@@ -1,21 +1,29 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+| Version | Supported |
+| ------- | --------- |
+| 1.0.x   | ✅        |
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Please do **not** open a public GitHub issue for security reports.
 
-Use this section to tell people how to report a vulnerability.
+Report vulnerabilities privately via [GitHub's private vulnerability reporting]
+(https://github.com/HedwigDTM/hedwig/security/advisories/new) or contact the
+maintainers directly.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Include as much of the following as you can:
+
+- The affected version(s) (`package.json` version or commit hash)
+- A description of the vulnerability and its impact
+- Steps or a proof of concept to reproduce it
+
+## What to expect
+
+- We will acknowledge your report within a few days.
+- We will confirm and assess the report, keep you informed of progress, and
+  credit you in the fix release if you wish.
+- Fixes ship as a patch release; the advisory is published once a fixed
+  version is available.

@@ -3,7 +3,6 @@ import { DuplicateStrategy } from './S3Strategies/DuplicateStrategy';
 import { S3Client as AWSClient } from '@aws-sdk/client-s3';
 import { S3RollBackStrategy } from './S3RollbackStrategy';
 import { S3RollbackStrategyType } from '../types/s3';
-import { S3BackupError, S3RestoreError } from '../errors';
 
 const DEFAULT_BACKUP_BUCKET_NAME = 'hedwig-backups';
 

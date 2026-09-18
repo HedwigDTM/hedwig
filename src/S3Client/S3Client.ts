@@ -4,7 +4,6 @@ import {
   HeadObjectCommand,
   PutObjectCommand,
   S3Client as AWSClient,
-  CreateBucketConfiguration,
   CreateBucketCommand,
   DeleteBucketCommand,
   GetObjectCommand,

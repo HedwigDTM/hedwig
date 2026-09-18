@@ -7,4 +7,18 @@ export default {
   transform: {
     '^.+\\.ts$': 'ts-jest', // Use ts-jest to transform TypeScript files
   },
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/*.test.ts',
+    '!src/index.ts',
+    '!src/types/**',
+  ],
+  coverageThreshold: {
+    global: {
+      statements: 90,
+      branches: 65,
+      functions: 90,
+      lines: 90,
+    },
+  },
 };

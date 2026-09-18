@@ -9,7 +9,7 @@ import {
   TransactionCallbackFunction,
   TransactionManagerConfig,
 } from '../types/transaction-manager';
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 import { RollbackError } from '../errors';
 
 /**
