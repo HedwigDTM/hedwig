@@ -34,7 +34,13 @@ const s3Config: S3Config = {
 };
 
 describe('TransactionManager Integration Tests', () => {
-  let transactionManager: TransactionManager;
+  // Config type is present for both clients, so the callback receives them
+  // as non-optional
+  type IntegrationManagerConfig = {
+    s3Config: S3Config;
+    redisConfig: RedisConfig;
+  };
+  let transactionManager: TransactionManager<IntegrationManagerConfig>;
   let s3Mock: AwsStub<
     ServiceInputTypes,
     ServiceOutputTypes,
