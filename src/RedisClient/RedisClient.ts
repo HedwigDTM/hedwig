@@ -44,20 +44,13 @@ export class RedisRollbackClient extends RollbackableClient {
    * @param value - The value to set.
    */
   public async set(key: string, value: string): Promise<string | null> {
-    const itemExists = await this.connection.exists(key);
+    // Snapshot the current state first (awaited: a failed backup must fail
+    // the operation instead of becoming an unhandled rejection later)
+    await this.rollbackStrategy.backupItem(key);
 
-    let rollbackAction;
-
-    if (itemExists) {
-      rollbackAction = async () => {
-        this.rollbackStrategy.restoreItem(key);
-      };
-      this.rollbackStrategy.backupItem(key);
-    } else {
-      rollbackAction = async () => {
-        await this.connection.del(key);
-      };
-    }
+    const rollbackAction = async () => {
+      await this.rollbackStrategy.restoreItem(key);
+    };
 
     this.rollbackActions.push(rollbackAction);
     return await this.connection.set(key, value);
@@ -69,7 +62,9 @@ export class RedisRollbackClient extends RollbackableClient {
    * @param key - The key to delete.
    */
   public async del(key: string): Promise<number> {
-    this.rollbackStrategy.backupItem(key);
+    // A missing key records { existed: false } so rollback deletes it
+    // instead of throwing mid-rollback
+    await this.rollbackStrategy.backupItem(key);
     const rollbackAction = async () => {
       await this.rollbackStrategy.restoreItem(key);
     };

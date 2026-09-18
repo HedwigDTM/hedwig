@@ -183,7 +183,7 @@ describe('TransactionManager Integration Tests', () => {
     });
 
     // Verify Redis operations sequence
-    expect(redisConnection.exists).toHaveBeenNthCalledWith(1, TEST_REDIS_KEY);
+    expect(redisConnection.get).toHaveBeenNthCalledWith(1, TEST_REDIS_KEY);
     expect(redisConnection.set).toHaveBeenNthCalledWith(
       1,
       TEST_REDIS_KEY,
