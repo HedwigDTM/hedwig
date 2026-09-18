@@ -445,6 +445,101 @@ describe('S3Client', () => {
         expect.arrayContaining(['test/bucket-a/shared', 'test/bucket-b/shared'])
       );
     });
+
+    it('Checking .closeTransaction() DUPLICATE - should delete only this transaction backup objects', async () => {
+      s3Mock.on(HeadObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(HeadBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(CopyObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(PutObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(DeleteObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+
+      const clientA = new S3RollbackClient(
+        'tx-a',
+        connection,
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
+      );
+      const clientB = new S3RollbackClient(
+        'tx-b',
+        connection,
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
+      );
+      const params: S3ObjectParams = {
+        Bucket: 'bucketName',
+        Key: 'key',
+        Body: Buffer.from('value'),
+      };
+
+      await clientA.putObject(params);
+      await clientB.putObject(params);
+      await clientA.closeTransaction();
+
+      const deletedKeys = s3Mock
+        .commandCalls(DeleteObjectCommand)
+        .map((call) => call.args[0].input.Key);
+      expect(deletedKeys).toContain('tx-a/bucketName/key');
+      expect(deletedKeys).not.toContain('tx-b/bucketName/key');
+      expect(s3Mock.commandCalls(DeleteBucketCommand)).toHaveLength(0);
+
+      await clientB.closeTransaction();
+      const deletedAfterB = s3Mock
+        .commandCalls(DeleteObjectCommand)
+        .map((call) => call.args[0].input.Key);
+      expect(deletedAfterB).toContain('tx-b/bucketName/key');
+    });
+
+    it('Checking .closeTransaction() DUPLICATE - should remove the general backup bucket only when this transaction created it', async () => {
+      s3Mock.on(HeadObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(HeadBucketCommand).rejects({
+        name: 'NotFound',
+        $metadata: { httpStatusCode: 404 },
+      });
+      s3Mock.on(CreateBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(CopyObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(PutObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(DeleteObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(DeleteBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+
+      const mockS3Client = new S3RollbackClient(
+        'test',
+        connection,
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
+      );
+      await mockS3Client.putObject({
+        Bucket: 'bucketName',
+        Key: 'key',
+        Body: Buffer.from('value'),
+      });
+      await mockS3Client.closeTransaction();
+
+      expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, {
+        Bucket: 'hedwig-backups',
+      });
+    });
   });
 
   describe('In memory strategy', () => {

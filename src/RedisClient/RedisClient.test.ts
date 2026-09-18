@@ -143,6 +143,17 @@ describe('RedisClient', () => {
     );
   });
 
+  it('Checking .closeTransaction() DUPLICATE FILE - should delete the transaction backup hash', async () => {
+    const mockRedisClient = new RedisRollbackClient(
+      'test',
+      connection,
+      RedisRollbackStrategyType.DUPLICATE_FILE,
+      'backupHashName'
+    );
+    await mockRedisClient.closeTransaction();
+    await expect(connection.del).toHaveBeenCalledWith('backupHashName:test');
+  });
+
   it('Checking .del IN MEMORY - item exists - should delete and rollback to old value', async () => {
     connection.exists.mockResolvedValueOnce(1);
     connection.del.mockResolvedValueOnce(1);

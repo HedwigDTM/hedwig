@@ -46,6 +46,6 @@ export class DuplicateStrategy extends RedisRollBackStrategy {
   }
 
   public async closeTransaction(): Promise<void> {
-    await this.connection.del(`${this.backupHashName}*`);
+    await this.connection.del(this.backupHashName);
   }
 }
