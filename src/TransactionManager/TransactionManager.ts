@@ -9,7 +9,7 @@ import {
   TransactionManagerConfig,
 } from '../types/transaction-manager';
 import { createClient, RedisClientType } from 'redis';
-import RollbackError from '../RollbackableClient/Errors/RollbackError';
+import { RollbackError } from '../errors';
 
 /**
  * Promise.allSettled reports status as a string-literal union; the enum keeps

@@ -1,4 +1,4 @@
-import RollbackError from './Errors/RollbackError';
+import { RollbackError } from '../errors';
 export interface RollbackableAction {
   rollbackAction: () => Promise<unknown>;
 }

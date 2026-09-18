@@ -1,7 +1,7 @@
 import { RedisConnection } from '../RedisConnection';
 import { RedisRollBackStrategy } from '../RedisRollbackStrategy';
 import { RedisBackupRecord } from '../../types/redis';
-import RollbackError from '../../RollbackableClient/Errors/RollbackError';
+import { RollbackError } from '../../errors';
 
 /**
  * Class to handle in-memory delete, backup and restore of Redis objects.
