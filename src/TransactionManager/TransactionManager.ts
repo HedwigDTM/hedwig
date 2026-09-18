@@ -11,6 +11,7 @@ import { RedisConfig } from '../Types/Redis/RedisConfig';
 import { RedisRollbackClient } from '../RedisClient/RedisClient';
 import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
 import { createClient, RedisClientType } from 'redis';
+import RollbackError from '../RollbackableClient/Errors/RollbackError';
 
 /**
  * TransactionManager is responsible for managing distributed transactions
@@ -64,16 +65,53 @@ export default class TransactionManager {
       );
     }
 
+    let transactionError: unknown;
+    let transactionFailed = false;
+
     try {
       await callback(clients);
     } catch (error) {
-      await Promise.all(
+      transactionFailed = true;
+      transactionError = error;
+    }
+
+    const cleanupFailures: unknown[] = [];
+
+    if (transactionFailed) {
+      const rollbackOutcomes = await Promise.allSettled(
         Object.values(clients).map((client) => client.rollback())
       );
-      throw error;
-    } finally {
-      await Promise.all(
-        Object.values(clients).map((client) => client.closeTransaction())
+      for (const outcome of rollbackOutcomes) {
+        if (outcome.status === 'rejected') {
+          cleanupFailures.push(outcome.reason);
+        }
+      }
+    }
+
+    const closeOutcomes = await Promise.allSettled(
+      Object.values(clients).map((client) => client.closeTransaction())
+    );
+    for (const outcome of closeOutcomes) {
+      if (outcome.status === 'rejected') {
+        cleanupFailures.push(outcome.reason);
+      }
+    }
+
+    if (transactionFailed) {
+      // The original error always wins - cleanup failures are attached, never thrown instead
+      if (cleanupFailures.length > 0 && transactionError instanceof Error) {
+        const withCleanup = transactionError as Error & {
+          cleanupFailures?: unknown[];
+        };
+        withCleanup.cleanupFailures = cleanupFailures;
+      }
+      throw transactionError;
+    }
+
+    if (cleanupFailures.length > 0) {
+      throw new RollbackError(
+        'Transaction succeeded but cleanup failed',
+        cleanupFailures
       );
     }
   }

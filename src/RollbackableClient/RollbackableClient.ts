@@ -1,5 +1,6 @@
+import RollbackError from './Errors/RollbackError';
 export interface RollbackableAction {
-  rollbackAction: () => Promise<any>;
+  rollbackAction: () => Promise<unknown>;
 }
 
 // Todo: add genrics
@@ -22,8 +23,25 @@ export default abstract class RollbackableClient {
    * @returns {Promise<void>} A promise that resolves once all rollback actions are complete.
    */
   public async rollback(): Promise<void> {
-    for (const rollbackAction of this.rollbackActions.reverse()) {
-      await rollbackAction();
+    const actions = this.rollbackActions.slice().reverse();
+    this.rollbackActions = [];
+
+    const failures: unknown[] = [];
+    for (const rollbackAction of actions) {
+      try {
+        await rollbackAction();
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+
+    if (failures.length > 0) {
+      throw new RollbackError(
+        failures.length === 1
+          ? '1 rollback action failed'
+          : `${failures.length} rollback actions failed`,
+        failures
+      );
     }
   }
 
