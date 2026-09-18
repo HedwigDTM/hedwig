@@ -14,6 +14,27 @@ import { createClient, RedisClientType } from 'redis';
 import RollbackError from '../RollbackableClient/Errors/RollbackError';
 
 /**
+ * Promise.allSettled reports status as a string-literal union; the enum keeps
+ * the comparisons symbolic at the call sites.
+ */
+enum SettledStatus {
+  Fulfilled = 'fulfilled',
+  Rejected = 'rejected',
+}
+function isRejectedOutcome(
+  outcome: PromiseSettledResult<unknown>
+): outcome is PromiseRejectedResult {
+  const status: string = outcome.status;
+  return status === SettledStatus.Rejected;
+}
+
+function isErrorWithCleanup(
+  error: unknown
+): error is Error & { cleanupFailures?: unknown[] } {
+  return error instanceof Error;
+}
+
+/**
  * TransactionManager is responsible for managing distributed transactions
  * across multiple services or data sources. It allows the user to define
  * a sequence of actions, ensuring that all actions are either fully completed
@@ -82,7 +103,7 @@ export default class TransactionManager {
         Object.values(clients).map((client) => client.rollback())
       );
       for (const outcome of rollbackOutcomes) {
-        if (outcome.status === 'rejected') {
+        if (isRejectedOutcome(outcome)) {
           cleanupFailures.push(outcome.reason);
         }
       }
@@ -92,18 +113,15 @@ export default class TransactionManager {
       Object.values(clients).map((client) => client.closeTransaction())
     );
     for (const outcome of closeOutcomes) {
-      if (outcome.status === 'rejected') {
+      if (isRejectedOutcome(outcome)) {
         cleanupFailures.push(outcome.reason);
       }
     }
 
     if (transactionFailed) {
       // The original error always wins - cleanup failures are attached, never thrown instead
-      if (cleanupFailures.length > 0 && transactionError instanceof Error) {
-        const withCleanup = transactionError as Error & {
-          cleanupFailures?: unknown[];
-        };
-        withCleanup.cleanupFailures = cleanupFailures;
+      if (cleanupFailures.length > 0 && isErrorWithCleanup(transactionError)) {
+        transactionError.cleanupFailures = cleanupFailures;
       }
       throw transactionError;
     }
