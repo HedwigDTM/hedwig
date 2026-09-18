@@ -9,7 +9,7 @@ import {
   HeadObjectCommand,
   ListBucketsCommand,
   ListBucketsCommandInput,
-  ListObjectsCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
@@ -231,67 +231,83 @@ describe('S3Client', () => {
   });
 
   describe('Duplicate strategy', () => {
-    it('Checking .deleteBucket() DUPLICATE - should delete a bucket and restore in upon rollback', async () => {
-      // Mock S3 Commands
-      s3Mock.on(ListObjectsCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
-        Contents: [
-          {
-            Key: 'key',
-          },
-        ],
+    it('Checking .deleteBucket() DUPLICATE - should fail fast for a non-empty bucket', async () => {
+      s3Mock.on(HeadBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
       });
-
-      s3Mock.on(CreateBucketCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
-      });
-
-      s3Mock.on(CopyObjectCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
-      });
-
-      s3Mock.on(DeleteBucketCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
+      s3Mock.on(ListObjectsV2Command).resolves({
+        $metadata: { httpStatusCode: 200 },
+        Contents: [{ Key: 'key' }],
       });
 
       const mockS3Client = new S3RollbackClient(
         'test',
         connection,
-        S3RollbackStrategyType.DUPLICATE_FILE
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
+      );
+
+      await expect(
+        mockS3Client.deleteBucket({ Bucket: 'bucketName' })
+      ).rejects.toThrow('is not empty');
+      expect(s3Mock.commandCalls(CopyObjectCommand)).toHaveLength(0);
+      expect(s3Mock.commandCalls(DeleteBucketCommand)).toHaveLength(0);
+    });
+
+    it('Checking .deleteBucket() DUPLICATE - should delete an empty bucket and recreate it on rollback', async () => {
+      s3Mock.on(HeadBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(ListObjectsV2Command).resolves({
+        $metadata: { httpStatusCode: 200 },
+        Contents: [],
+        IsTruncated: false,
+      });
+      s3Mock.on(DeleteBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(CreateBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+
+      const mockS3Client = new S3RollbackClient(
+        'test',
+        connection,
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
       );
       const params: S3BucketParams = { Bucket: 'bucketName' };
 
       await mockS3Client.deleteBucket(params);
       await mockS3Client.rollback();
 
-      await expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, {
-        Bucket: 'hedwig-backups-bucketName',
-      });
-      await expect(s3Mock).toHaveReceivedCommandWith(ListObjectsCommand, {
-        Bucket: 'bucketName',
-      });
-      await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
-        Bucket: 'hedwig-backups-bucketName',
-        Key: 'key',
-        CopySource: 'bucketName/key',
-      });
       await expect(s3Mock).toHaveReceivedCommandWith(
         DeleteBucketCommand,
         params
       );
-      await expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
-        Bucket: 'bucketName',
-        Key: 'key',
-        CopySource: 'hedwig-backups-bucketName/key',
+      await expect(s3Mock).toHaveReceivedCommandWith(
+        CreateBucketCommand,
+        params
+      );
+    });
+
+    it('Checking .deleteBucket() DUPLICATE - should fail for a missing bucket', async () => {
+      s3Mock.on(HeadBucketCommand).rejects({
+        name: 'NotFound',
+        $metadata: { httpStatusCode: 404 },
       });
+
+      const mockS3Client = new S3RollbackClient(
+        'test',
+        connection,
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
+      );
+
+      await expect(
+        mockS3Client.deleteBucket({ Bucket: 'bucketName' })
+      ).rejects.toThrow('does not exist');
+      expect(s3Mock.commandCalls(DeleteBucketCommand)).toHaveLength(0);
     });
 
     it('Checking .createBucket - should create a bucket and delete it upon rollback', async () => {
@@ -635,43 +651,41 @@ describe('S3Client', () => {
   });
 
   describe('In memory strategy', () => {
-    it('Checking .deleteBucket() MEMORY - should delete a bucket and restore in upon rollback', async () => {
-      const mockStream = new Readable();
-      mockStream.push('hello world');
-      mockStream.push(null);
-
-      s3Mock.on(ListObjectsCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
-        Contents: [
-          {
-            Key: 'key',
-          },
-        ],
+    it('Checking .deleteBucket() MEMORY - should fail fast for a non-empty bucket', async () => {
+      s3Mock.on(HeadBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
       });
-      s3Mock.on(GetObjectCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
-        Body: sdkStreamMixin(mockStream),
+      s3Mock.on(ListObjectsV2Command).resolves({
+        $metadata: { httpStatusCode: 200 },
+        Contents: [{ Key: 'key' }],
+      });
+
+      const mockS3Client = new S3RollbackClient(
+        'test',
+        connection,
+        S3RollbackStrategyType.IN_MEMORY
+      );
+
+      await expect(
+        mockS3Client.deleteBucket({ Bucket: 'bucketName' })
+      ).rejects.toThrow('is not empty');
+      expect(s3Mock.commandCalls(DeleteBucketCommand)).toHaveLength(0);
+    });
+
+    it('Checking .deleteBucket() MEMORY - should delete an empty bucket and recreate it on rollback', async () => {
+      s3Mock.on(HeadBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(ListObjectsV2Command).resolves({
+        $metadata: { httpStatusCode: 200 },
+        Contents: [],
+        IsTruncated: false,
+      });
+      s3Mock.on(DeleteBucketCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
       });
       s3Mock.on(CreateBucketCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
-      });
-
-      s3Mock.on(DeleteBucketCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
-      });
-
-      s3Mock.on(PutObjectCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
+        $metadata: { httpStatusCode: 200 },
       });
 
       const mockS3Client = new S3RollbackClient(
@@ -684,14 +698,14 @@ describe('S3Client', () => {
       await mockS3Client.deleteBucket(params);
       await mockS3Client.rollback();
 
-      expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
-      expect(s3Mock).toHaveReceivedCommandWith(GetObjectCommand, params);
-      expect(s3Mock).toHaveReceivedCommandWith(CreateBucketCommand, params);
-      expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, {
-        Bucket: 'bucketName',
-        Key: 'key',
-        Body: expect.any(Uint8Array),
-      });
+      await expect(s3Mock).toHaveReceivedCommandWith(
+        DeleteBucketCommand,
+        params
+      );
+      await expect(s3Mock).toHaveReceivedCommandWith(
+        CreateBucketCommand,
+        params
+      );
     });
 
     it('Checking .createBucket Memory - should create a bucket and delete it upon rollback', async () => {
@@ -731,16 +745,6 @@ describe('S3Client', () => {
       mockStream.push('hello world');
       mockStream.push(null);
 
-      s3Mock.on(ListObjectsCommand).resolves({
-        $metadata: {
-          httpStatusCode: 200,
-        },
-        Contents: [
-          {
-            Key: 'key',
-          },
-        ],
-      });
       s3Mock.on(GetObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,

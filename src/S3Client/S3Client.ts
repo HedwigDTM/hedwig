@@ -19,6 +19,7 @@ import {
   DeleteObjectCommandOutput,
   CreateBucketCommandOutput,
   DeleteBucketCommandOutput,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { S3RollbackFactory } from './S3RollbackFactory';
 import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
@@ -208,17 +209,39 @@ export class S3RollbackClient extends RollbackableClient {
   /**
    * Deletes an S3 bucket and stores a rollback action.
    *
+   * S3 only deletes empty buckets, so this targets empty buckets: a missing
+   * bucket or a non-empty bucket fails fast with a clear error instead of
+   * running an expensive backup the delete would reject anyway. Rollback
+   * recreates the (empty) bucket.
+   *
    * @param {S3BucketParams} params - The parameters for the S3 `deleteBucket` command (Bucket, etc.).
    * @returns {Promise<DeleteBucketCommandOutput>} A promise that resolves with the result of the `deleteBucket` command.
    */
   public async deleteBucket(
     params: S3BucketParams
   ): Promise<DeleteBucketCommandOutput> {
-    await this.rollbackStrategy.backupBucket(params);
+    try {
+      await this.connection.send(new HeadBucketCommand(params));
+    } catch (error) {
+      if (this.isNotFoundError(error)) {
+        throw new Error(`Bucket ${params.Bucket} does not exist`);
+      }
+      throw error;
+    }
+
+    const listResponse = await this.connection.send(
+      new ListObjectsV2Command({ Bucket: params.Bucket, MaxKeys: 2 })
+    );
+    if ((listResponse.Contents ?? []).length > 0 || listResponse.IsTruncated) {
+      throw new Error(
+        `Bucket ${params.Bucket} is not empty - delete its objects first`
+      );
+    }
+
     const result = await this.connection.send(new DeleteBucketCommand(params));
 
     const rollbackAction = async () => {
-      await this.rollbackStrategy.restoreBucket(params);
+      await this.connection.send(new CreateBucketCommand(params));
     };
 
     this.rollbackActions.push(rollbackAction);
