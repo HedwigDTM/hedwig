@@ -282,4 +282,51 @@ describe('RedisClient', () => {
     );
     expect(connection.set).not.toHaveBeenCalled();
   });
+
+  it('Checking .set DUPLICATE FILE - empty string value - should restore the empty string on rollback', async () => {
+    connection.get.mockResolvedValueOnce('');
+    connection.set.mockResolvedValue('OK');
+    connection.hSet.mockResolvedValue(1);
+    connection.hGet.mockResolvedValueOnce(
+      JSON.stringify({ existed: true, value: '' })
+    );
+
+    const mockRedisClient = new RedisRollbackClient(
+      'test',
+      connection,
+      RedisRollbackStrategyType.DUPLICATE_FILE,
+      'backupHashName'
+    );
+    await mockRedisClient.set('key', 'newValue');
+    await mockRedisClient.rollback();
+
+    await expect(connection.hSet).toHaveBeenCalledWith(
+      'backupHashName:test',
+      'key',
+      JSON.stringify({ existed: true, value: '' })
+    );
+    await expect(connection.set).toHaveBeenCalledWith('key', 'newValue');
+    await expect(connection.set).toHaveBeenCalledWith('key', '');
+  });
+
+  it('Checking .del DUPLICATE FILE - empty string value - should restore the empty string on rollback', async () => {
+    connection.get.mockResolvedValueOnce('');
+    connection.del.mockResolvedValue(1);
+    connection.hSet.mockResolvedValue(1);
+    connection.hGet.mockResolvedValueOnce(
+      JSON.stringify({ existed: true, value: '' })
+    );
+
+    const mockRedisClient = new RedisRollbackClient(
+      'test',
+      connection,
+      RedisRollbackStrategyType.DUPLICATE_FILE,
+      'backupHashName'
+    );
+    await mockRedisClient.del('key');
+    await mockRedisClient.rollback();
+
+    await expect(connection.del).toHaveBeenCalledWith('key');
+    await expect(connection.set).toHaveBeenCalledWith('key', '');
+  });
 });
