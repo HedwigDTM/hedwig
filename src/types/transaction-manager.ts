@@ -8,11 +8,24 @@ export type RollbackableClients = {
   RedisClient: RedisRollbackClient;
 };
 
-export type TransactionCallbackFunction = (
-  clients: Partial<RollbackableClients>
-) => Promise<void>;
+export type TransactionCallbackFunction<
+  Clients = Partial<RollbackableClients>,
+  Result = void,
+> = (clients: Clients) => Promise<Result>;
 
 export type TransactionManagerConfig = {
   s3Config?: S3Config;
   redisConfig?: RedisConfig;
+};
+
+/**
+ * The clients a configured TransactionManager exposes. A client is
+ * non-optional exactly when its config was provided to the manager, so
+ * callbacks never need "if configured" guards for configured clients.
+ */
+export type RollbackableClientsFor<C extends TransactionManagerConfig> = {
+  S3Client: C['s3Config'] extends S3Config ? S3RollbackClient : undefined;
+  RedisClient: C['redisConfig'] extends RedisConfig
+    ? RedisRollbackClient
+    : undefined;
 };

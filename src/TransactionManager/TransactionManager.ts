@@ -5,6 +5,7 @@ import { S3Config, S3RollbackStrategyType } from '../types/s3';
 import { RedisConfig, RedisRollbackStrategyType } from '../types/redis';
 import { RedisRollbackClient } from '../RedisClient/RedisClient';
 import {
+  RollbackableClientsFor,
   TransactionCallbackFunction,
   TransactionManagerConfig,
 } from '../types/transaction-manager';
@@ -38,22 +39,24 @@ function isErrorWithCleanup(
  * a sequence of actions, ensuring that all actions are either fully completed
  * or rolled back in case of any failure.
  */
-export default class TransactionManager {
+export default class TransactionManager<
+  C extends TransactionManagerConfig = TransactionManagerConfig,
+> {
   private s3Config?: S3Config;
   private redisConfig?: RedisConfig;
 
-  constructor({ s3Config, redisConfig }: TransactionManagerConfig) {
-    this.s3Config = s3Config;
-    this.redisConfig = redisConfig;
+  constructor(config: C) {
+    this.s3Config = config.s3Config;
+    this.redisConfig = config.redisConfig;
   }
 
   /**
    * Executes a transaction with the given actions.
    * @param callback - A callback function that receives an object with the clients.
    */
-  public async transaction(
-    callback: TransactionCallbackFunction
-  ): Promise<void> {
+  public async transaction<Result>(
+    callback: TransactionCallbackFunction<RollbackableClientsFor<C>, Result>
+  ): Promise<Result> {
     const transactionID = uuidv4();
     const clients: {
       S3Client?: S3RollbackClient;
@@ -90,11 +93,19 @@ export default class TransactionManager {
       );
     }
 
+    // Assigned exactly when the callback succeeds; the early throws below
+    // guarantee the return statement is only reached on that path
+    let transactionResult!: Result;
     let transactionError: unknown;
     let transactionFailed = false;
 
     try {
-      await callback(clients);
+      // The public signature maps client optionality from the config type C.
+      // TypeScript cannot verify a deferred conditional type from the runtime
+      // bag, so this named boundary is the single assertion in the file; the
+      // bag only ever holds clients this config created.
+      const clientsForConfig = clients as RollbackableClientsFor<C>;
+      transactionResult = await callback(clientsForConfig);
     } catch (error) {
       transactionFailed = true;
       transactionError = error;
@@ -144,5 +155,7 @@ export default class TransactionManager {
         cleanupFailures
       );
     }
+
+    return transactionResult;
   }
 }

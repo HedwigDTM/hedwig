@@ -39,6 +39,23 @@ describe('TransactionManager', () => {
     });
   });
 
+  it('returns the callback result and exposes configured clients as non-optional', async () => {
+    s3Instance.closeTransaction.mockResolvedValue();
+    redisInstance.closeTransaction.mockResolvedValue();
+    s3Instance.rollback.mockResolvedValue();
+    redisInstance.rollback.mockResolvedValue();
+
+    const result = await manager.transaction(
+      async ({ S3Client, RedisClient }) => {
+        expect(S3Client).toBeDefined();
+        expect(RedisClient).toBeDefined();
+        return 42;
+      }
+    );
+
+    expect(result).toBe(42);
+  });
+
   it('should not mask the original error when a rollback fails', async () => {
     s3Instance.rollback.mockRejectedValue(
       new RollbackError('1 rollback action failed', [
