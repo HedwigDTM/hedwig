@@ -207,8 +207,10 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'value');
   });
 
-  it('Checking .incr - should increase and decrease value upon rollback', async () => {
-    connection.incr.mockResolvedValueOnce(1);
+  it('Checking .incr - should restore the exact pre-transaction value on rollback', async () => {
+    connection.get.mockResolvedValueOnce('5');
+    connection.incr.mockResolvedValueOnce(6);
+    connection.set.mockResolvedValue('OK');
 
     const mockRedisClient = new RedisRollbackClient(
       'test',
@@ -218,12 +220,33 @@ describe('RedisClient', () => {
     await mockRedisClient.incr('key');
     await mockRedisClient.rollback();
 
+    await expect(connection.get).toHaveBeenCalledWith('key');
     await expect(connection.incr).toHaveBeenCalledWith('key');
-    await expect(connection.decr).toHaveBeenCalledWith('key');
+    await expect(connection.set).toHaveBeenCalledWith('key', '5');
+    await expect(connection.decr).not.toHaveBeenCalled();
   });
 
-  it('Checking .decr', async () => {
-    connection.decr.mockResolvedValueOnce(1);
+  it('Checking .incr - missing key - should delete the key on rollback instead of leaving it at zero', async () => {
+    connection.get.mockResolvedValueOnce(null);
+    connection.incr.mockResolvedValueOnce(1);
+    connection.del.mockResolvedValue(1);
+
+    const mockRedisClient = new RedisRollbackClient(
+      'test',
+      connection,
+      RedisRollbackStrategyType.IN_MEMORY
+    );
+    await mockRedisClient.incr('counter');
+    await mockRedisClient.rollback();
+
+    await expect(connection.del).toHaveBeenCalledWith('counter');
+    await expect(connection.set).not.toHaveBeenCalled();
+  });
+
+  it('Checking .decr - should restore the exact pre-transaction value on rollback', async () => {
+    connection.get.mockResolvedValueOnce('3');
+    connection.decr.mockResolvedValueOnce(2);
+    connection.set.mockResolvedValue('OK');
 
     const mockRedisClient = new RedisRollbackClient(
       'test',
@@ -233,8 +256,10 @@ describe('RedisClient', () => {
     await mockRedisClient.decr('key');
     await mockRedisClient.rollback();
 
+    await expect(connection.get).toHaveBeenCalledWith('key');
     await expect(connection.decr).toHaveBeenCalledWith('key');
-    await expect(connection.incr).toHaveBeenCalledWith('key');
+    await expect(connection.set).toHaveBeenCalledWith('key', '3');
+    await expect(connection.incr).not.toHaveBeenCalled();
   });
 
   it('Checking .del IN MEMORY - missing key - should roll back to no key without failing', async () => {

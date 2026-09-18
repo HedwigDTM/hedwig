@@ -76,12 +76,19 @@ export class RedisRollbackClient extends RollbackableClient {
   /**
    * Increments a key in the Redis database.
    *
+   * Rollback restores the exact pre-transaction value via a snapshot (keys
+   * that did not exist are deleted), so concurrent writers' increments are
+   * not undone. Note: the GET snapshot and INCR are two round-trips, not an
+   * atomic transaction with the increment itself.
+   *
    * @param key - The key to increment.
    * @returns The new value of the key after incrementing.
    */
   public async incr(key: string): Promise<number> {
+    await this.rollbackStrategy.backupItem(key);
+
     const rollbackAction = async () => {
-      await this.connection.decr(key);
+      await this.rollbackStrategy.restoreItem(key);
     };
     this.rollbackActions.push(rollbackAction);
 
@@ -91,12 +98,17 @@ export class RedisRollbackClient extends RollbackableClient {
   /**
    * Decrements a key in the Redis database.
    *
+   * Rollback restores the exact pre-transaction value via a snapshot (see
+   * incr for semantics and caveats).
+   *
    * @param key - The key to decrement.
    * @returns The new value of the key after decrementing.
    */
   public async decr(key: string): Promise<number> {
+    await this.rollbackStrategy.backupItem(key);
+
     const rollbackAction = async () => {
-      await this.connection.incr(key);
+      await this.rollbackStrategy.restoreItem(key);
     };
     this.rollbackActions.push(rollbackAction);
 
