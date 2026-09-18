@@ -1,12 +1,13 @@
-import { RedisRollbackClient } from '../../RedisClient/RedisClient';
-import { S3RollbackClient } from '../../S3Client/S3Client';
-import { RedisConfig } from '../Redis/RedisConfig';
-import { S3Config } from '../S3/S3Config';
+import { RedisRollbackClient } from '../RedisClient/RedisClient';
+import { S3RollbackClient } from '../S3Client/S3Client';
+import { RedisConfig } from './redis';
+import { S3Config } from './s3';
 
 export type RollbackableClients = {
   S3Client: S3RollbackClient;
   RedisClient: RedisRollbackClient;
 };
+
 export type TransactionCallbackFunction = (
   clients: Partial<RollbackableClients>
 ) => Promise<void>;

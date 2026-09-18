@@ -22,19 +22,15 @@ import {
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { S3RollbackFactory } from './S3RollbackFactory';
-import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
 import { S3RollBackStrategy } from './S3RollbackStrategy';
+import {
+  S3BucketParams,
+  S3ObjectParams,
+  S3RollbackStrategyType,
+} from '../types/s3';
 
-export interface S3ObjectParams {
-  Bucket: string;
-  Key: string;
-  Body?: Buffer;
-}
-
-export interface S3BucketParams {
-  Bucket: string;
-  CreateBucketConfiguration?: CreateBucketConfiguration;
-}
+// Types live in src/types/s3.ts; re-exported here for existing deep imports
+export type { S3BucketParams, S3ObjectParams } from '../types/s3';
 /**
  * The `S3RollbackClient` class is responsible for handling interactions with S3 while ensuring rollback capabilities
  * for each action.

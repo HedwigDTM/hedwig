@@ -10,10 +10,10 @@ import {
 import { mock, MockProxy } from 'jest-mock-extended';
 import { RedisClientType } from 'redis';
 import TransactionManager from './TransactionManager';
-import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
-import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
-import { S3Config } from '../Types/S3/S3Config';
-import { RedisConfig } from '../Types/Redis/RedisConfig';
+import { S3RollbackStrategyType } from '../types/s3';
+import { RedisRollbackStrategyType } from '../types/redis';
+import { S3Config } from '../types/s3';
+import { RedisConfig } from '../types/redis';
 import { mockClient, AwsStub } from 'aws-sdk-client-mock';
 import { Readable } from 'stream';
 import { sdkStreamMixin } from '@smithy/util-stream';

@@ -12,8 +12,9 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
-import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
-import { S3BucketParams, S3ObjectParams, S3RollbackClient } from './S3Client';
+import { S3RollbackStrategyType } from '../types/s3';
+import { S3BucketParams, S3ObjectParams } from '../types/s3';
+import { S3RollbackClient } from './S3Client';
 import 'aws-sdk-client-mock-jest';
 import { mockClient } from 'aws-sdk-client-mock';
 import { Readable } from 'stream';
