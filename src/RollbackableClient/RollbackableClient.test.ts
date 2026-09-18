@@ -1,5 +1,5 @@
 import RollbackableClient from './RollbackableClient';
-import RollbackError from './Errors/RollbackError';
+import { RollbackError } from '../errors';
 
 class TestClient extends RollbackableClient {
   public addAction(action: () => Promise<unknown>): void {

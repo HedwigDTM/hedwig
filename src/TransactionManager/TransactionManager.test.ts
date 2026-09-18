@@ -5,7 +5,7 @@ import { S3RollbackClient } from '../S3Client/S3Client';
 import { RedisRollbackClient } from '../RedisClient/RedisClient';
 import { RedisRollbackStrategyType } from '../types/redis';
 import { S3RollbackStrategyType } from '../types/s3';
-import RollbackError from '../RollbackableClient/Errors/RollbackError';
+import { RollbackError } from '../errors';
 
 jest.mock('../S3Client/S3Client');
 jest.mock('../RedisClient/RedisClient');

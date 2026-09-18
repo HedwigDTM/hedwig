@@ -1,5 +1,5 @@
 import { S3ObjectParams } from '../../types/s3';
-import { S3BackupError, S3RestoreError } from '../S3RollbackFactory';
+import { S3BackupError, S3RestoreError } from '../../errors';
 import { S3RollBackStrategy } from '../S3RollbackStrategy';
 import {
   CopyObjectCommand,
