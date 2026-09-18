@@ -1,5 +1,5 @@
 import { mock, MockProxy } from 'jest-mock-extended';
-import { RedisClientType } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import TransactionManager from './TransactionManager';
 import { S3RollbackClient } from '../S3Client/S3Client';
 import { RedisRollbackClient } from '../RedisClient/RedisClient';
@@ -9,9 +9,11 @@ import RollbackError from '../RollbackableClient/Errors/RollbackError';
 
 jest.mock('../S3Client/S3Client');
 jest.mock('../RedisClient/RedisClient');
+jest.mock('redis');
 
 const MockedS3 = jest.mocked(S3RollbackClient);
 const MockedRedis = jest.mocked(RedisRollbackClient);
+const MockedCreateClient = jest.mocked(createClient);
 
 describe('TransactionManager', () => {
   let s3Instance: MockProxy<S3RollbackClient>;
@@ -130,5 +132,90 @@ describe('TransactionManager', () => {
 
     expect(s3Instance.closeTransaction).toHaveBeenCalledTimes(1);
     expect(redisInstance.closeTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Redis connection ownership', () => {
+    let ownedConnection: MockProxy<RedisClientType>;
+    let suppliedConnection: MockProxy<RedisClientType>;
+
+    beforeEach(() => {
+      ownedConnection = mock<RedisClientType>();
+      ownedConnection.connect.mockResolvedValue(ownedConnection);
+      ownedConnection.quit.mockResolvedValue('OK');
+      MockedCreateClient.mockReturnValue(ownedConnection);
+      MockedCreateClient.mockClear();
+      suppliedConnection = mock<RedisClientType>();
+    });
+
+    it('should disconnect connections it created', async () => {
+      s3Instance.rollback.mockResolvedValue();
+      redisInstance.rollback.mockResolvedValue();
+      s3Instance.closeTransaction.mockResolvedValue();
+      redisInstance.closeTransaction.mockResolvedValue();
+
+      const ownedManager = new TransactionManager({
+        redisConfig: {
+          url: 'redis://localhost:6379',
+          rollbackStrategy: RedisRollbackStrategyType.IN_MEMORY,
+        },
+      });
+
+      await ownedManager.transaction(async () => undefined);
+
+      expect(MockedCreateClient).toHaveBeenCalledWith({
+        url: 'redis://localhost:6379',
+      });
+      expect(ownedConnection.quit).toHaveBeenCalledTimes(1);
+    });
+
+    it('should never disconnect a user-supplied connection', async () => {
+      s3Instance.rollback.mockResolvedValue();
+      redisInstance.rollback.mockResolvedValue();
+      s3Instance.closeTransaction.mockResolvedValue();
+      redisInstance.closeTransaction.mockResolvedValue();
+
+      const suppliedManager = new TransactionManager({
+        redisConfig: {
+          url: 'redis://localhost:6379',
+          rollbackStrategy: RedisRollbackStrategyType.IN_MEMORY,
+          connection: suppliedConnection,
+        },
+      });
+
+      await suppliedManager.transaction(async () => undefined);
+
+      expect(MockedCreateClient).not.toHaveBeenCalled();
+      expect(suppliedConnection.quit).not.toHaveBeenCalled();
+    });
+
+    it('should not mask the original error when disconnecting fails', async () => {
+      s3Instance.rollback.mockResolvedValue();
+      redisInstance.rollback.mockResolvedValue();
+      s3Instance.closeTransaction.mockResolvedValue();
+      redisInstance.closeTransaction.mockResolvedValue();
+      ownedConnection.quit.mockRejectedValue(new Error('quit failed'));
+
+      const ownedManager = new TransactionManager({
+        redisConfig: {
+          url: 'redis://localhost:6379',
+          rollbackStrategy: RedisRollbackStrategyType.IN_MEMORY,
+        },
+      });
+
+      const caught: unknown = await ownedManager
+        .transaction(async () => {
+          throw new Error('boom');
+        })
+        .then(
+          () => {
+            throw new Error('transaction should have rejected');
+          },
+          (error: unknown) => error
+        );
+
+      expect((caught as Error).message).toBe('boom');
+      const withCleanup = caught as Error & { cleanupFailures?: unknown[] };
+      expect(withCleanup.cleanupFailures).toEqual([new Error('quit failed')]);
+    });
   });
 });

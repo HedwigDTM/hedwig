@@ -61,6 +61,7 @@ export default class TransactionManager {
       S3Client?: S3RollbackClient;
       RedisClient?: RedisRollbackClient;
     } = {};
+    let ownedRedisConnection: RedisClientType | null = null;
 
     if (this.s3Config) {
       clients.S3Client = new S3RollbackClient(
@@ -74,15 +75,25 @@ export default class TransactionManager {
     }
 
     if (this.redisConfig) {
+      const { connection, rollbackStrategy, backupHashName, ...clientOptions } =
+        this.redisConfig;
+      // node-redis v4 overload inference on the loose RedisClientOptions type
+      // (plus duplicate @redis type copies in the current tree) breaks strict
+      // assignability here; the dependency-surgery issue (#69) removes the
+      // duplicate types, this cast stays a one-line boundary
+      const redisClient: RedisClientType =
+        connection ??
+        ((await createClient(clientOptions).connect()) as RedisClientType);
+      // Only connections created here are disconnected during cleanup;
+      // a user-supplied connection stays owned by the caller
+      if (!connection) {
+        ownedRedisConnection = redisClient;
+      }
       clients.RedisClient = new RedisRollbackClient(
         transactionID,
-        // If the user provided already established connection, use it
-        this.redisConfig.connection ||
-          (await (createClient(this.redisConfig) as RedisClientType).connect()),
-        this.redisConfig.rollbackStrategy
-          ? this.redisConfig.rollbackStrategy
-          : RedisRollbackStrategyType.IN_MEMORY,
-        this.redisConfig.backupHashName
+        redisClient,
+        rollbackStrategy ?? RedisRollbackStrategyType.IN_MEMORY,
+        backupHashName
       );
     }
 
@@ -115,6 +126,14 @@ export default class TransactionManager {
     for (const outcome of closeOutcomes) {
       if (isRejectedOutcome(outcome)) {
         cleanupFailures.push(outcome.reason);
+      }
+    }
+
+    if (ownedRedisConnection) {
+      try {
+        await ownedRedisConnection.quit();
+      } catch (error) {
+        cleanupFailures.push(error);
       }
     }
 
