@@ -5,9 +5,11 @@
 **Hedwig** is a distributed transaction manager, designed to simplify complex workflows involving interactions with multiple third-party resources. It provides a reliable, simplified approach to orchestrating and managing transactions across distributed systems, ensuring efficient and consistent operations.
 
 ```typescript
-import TransactionManager from './TransactionManager/TransactionManager';
-import { RedisRollbackStrategyType } from './Types/Redis/RedisRollbackStrategy';
-import { S3RollbackStrategyType } from './Types/S3/S3RollBackStrategy';
+import {
+  TransactionManager,
+  S3RollbackStrategyType,
+  RedisRollbackStrategyType,
+} from '@hedwig-team/dtm';
 
 const manager = new TransactionManager({
   s3Config: {
@@ -17,28 +19,38 @@ const manager = new TransactionManager({
     forcePathStyle: true,
   },
   redisConfig: {
-    url: 'localhost',
+    url: 'redis://localhost:6379',
     rollbackStrategy: RedisRollbackStrategyType.IN_MEMORY,
   },
 });
 
 (async () => {
-  await manager.transaction(async ({ S3Client, RedisClient }) => {
-    if (S3Client) {
+  const result = await manager.transaction(
+    async ({ S3Client, RedisClient }) => {
+      // S3Client and RedisClient are non-optional: both configs were provided
       await S3Client.putObject({
         Bucket: 'my-local-bucket',
         Key: 'V1',
         Body: Buffer.from('value1', 'utf-8'),
       });
-    }
-
-    if (RedisClient) {
       await RedisClient.set('key1', 'value1');
+      return 'done';
     }
-  });
+  );
 })();
-
 ```
+
+If the callback throws, every action inside is rolled back and the original
+error propagates — cleanup failures are attached as `error.cleanupFailures`
+and never mask it.
+
+## Documentation
+
+- [Getting started](./docs/getting-started.md)
+- [Rollback strategies](./docs/strategies.md)
+- [Error handling](./docs/errors.md)
+- [Limitations](./docs/limitations.md)
+- [API reference](./docs/api.md)
 
 ## License
 
