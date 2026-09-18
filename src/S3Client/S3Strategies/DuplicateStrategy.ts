@@ -1,22 +1,26 @@
-import { S3BucketParams, S3ObjectParams } from '../S3Client';
+import { S3ObjectParams } from '../S3Client';
 import { S3BackupError, S3RestoreError } from '../S3RollbackFactory';
 import { S3RollBackStrategy } from '../S3RollbackStrategy';
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
   S3Client as AWSClient,
-  ListObjectsCommand,
   CreateBucketCommand,
   HeadBucketCommand,
   DeleteBucketCommand,
-  ListObjectsCommandInput,
-  _Object,
 } from '@aws-sdk/client-s3';
 
+function isS3ServiceError(
+  error: unknown
+): error is { name?: string; $metadata?: { httpStatusCode?: number } } {
+  return typeof error === 'object' && error !== null;
+}
 export class DuplicateStrategy extends S3RollBackStrategy {
   private backupsBucketName: string;
   private transactionID: string;
   private isGeneralBackupBucketCreated: boolean = false;
+  private createdGeneralBackupBucket = false;
+  private backupObjectKeys = new Set<string>();
 
   constructor(
     _connection: AWSClient,
@@ -51,6 +55,7 @@ export class DuplicateStrategy extends S3RollBackStrategy {
           CopySource: `${Bucket}/${Key}`,
         })
       );
+      this.backupObjectKeys.add(this.backupKey(params));
     } catch (error) {
       throw new S3BackupError(`Failed to backup file: ${error}`);
     }
@@ -84,152 +89,37 @@ export class DuplicateStrategy extends S3RollBackStrategy {
     }
   }
 
-  /**
-   * Backs up the current version of an S3 bucket by duplicating it to a backup bucket.
-   * @param {S3Params} params - Parameters for the backup operation.
-   * @returns {Promise<void>}
-   */
-  public async backupBucket(params: S3BucketParams): Promise<void> {
-    const { Bucket } = params;
-    try {
-      let marker: string | undefined;
-
-      // Create backup bucket first
-      await this.connection.send(
-        new CreateBucketCommand({
-          Bucket: `${this.backupsBucketName}-${Bucket}`,
-        })
-      );
-
-      do {
-        const listResponse = await this.connection.send(
-          new ListObjectsCommand({
-            Bucket,
-            Marker: marker,
-          } as ListObjectsCommandInput)
-        );
-
-        if (!listResponse.Contents) {
-          throw new S3BackupError('No objects found in the bucket');
-        }
-
-        // Process current batch of objects in parallel
-        await Promise.all(
-          listResponse.Contents.map((object) =>
-            this.connection.send(
-              new CopyObjectCommand({
-                Bucket: `${this.backupsBucketName}-${Bucket}`,
-                Key: object.Key!,
-                CopySource: `${Bucket}/${object.Key}`,
-              })
-            )
-          )
-        );
-
-        marker = listResponse.NextMarker;
-      } while (marker);
-    } catch (error) {
-      throw new S3BackupError(`Failed to backup bucket: ${error}`);
-    }
-  }
-
   public async closeTransaction(): Promise<void> {
     try {
-      let marker: string | undefined;
-      const objectsToDelete: _Object[] = [];
-
-      // List all objects in the backup bucket using continuation tokens
-      do {
-        const listObjectsResponse = await this.connection.send(
-          new ListObjectsCommand({
-            Bucket: this.backupsBucketName,
-            Marker: marker,
-          })
-        );
-
-        if (listObjectsResponse.Contents) {
-          objectsToDelete.push(...listObjectsResponse.Contents);
-        }
-
-        marker = listObjectsResponse.NextMarker;
-      } while (marker);
-
-      // Delete all objects in the bucket
-      if (objectsToDelete.length > 0) {
-        await Promise.all(
-          objectsToDelete.map((object) =>
-            this.connection.send(
-              new DeleteObjectCommand({
-                Bucket: this.backupsBucketName,
-                Key: object.Key,
-              })
-            )
+      // Delete the backup objects created by this transaction
+      await Promise.all(
+        Array.from(this.backupObjectKeys).map((key) =>
+          this.connection.send(
+            new DeleteObjectCommand({
+              Bucket: this.backupsBucketName,
+              Key: key,
+            })
           )
+        )
+      );
+
+      // Remove the general backup bucket only if this transaction created it
+      if (this.createdGeneralBackupBucket) {
+        await this.connection.send(
+          new DeleteBucketCommand({ Bucket: this.backupsBucketName })
         );
       }
-
-      // Delete the backup bucket itself
-      await this.connection.send(
-        new DeleteBucketCommand({
-          Bucket: this.backupsBucketName,
-        })
-      );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If the bucket doesn't exist, that's fine - we can ignore this error
       if (
-        error.name === 'NoSuchBucket' ||
-        error.$metadata?.httpStatusCode === 404
+        isS3ServiceError(error) &&
+        (error.name === 'NoSuchBucket' ||
+          error.$metadata?.httpStatusCode === 404)
       ) {
         return;
       }
       // For any other error, rethrow it
       throw error;
-    }
-  }
-
-  /**
-   * Restores the latest version of an S3 bucket from the backup bucket to the original bucket.
-   * @param {S3Params} params - Parameters for the restore operation.
-   * @returns {Promise<void>}
-   */
-  public async restoreBucket(params: S3BucketParams): Promise<void> {
-    const { Bucket } = params;
-
-    try {
-      // Create restored bucket first
-      await this.connection.send(new CreateBucketCommand(params));
-
-      let marker: string | undefined;
-
-      do {
-        const listResponse = await this.connection.send(
-          new ListObjectsCommand({
-            Bucket: `${this.backupsBucketName}-${Bucket}`,
-            Marker: marker,
-          } as ListObjectsCommandInput)
-        );
-
-        if (!listResponse.Contents) {
-          throw new S3RestoreError('No objects found in the backup bucket');
-        }
-
-        // Process current batch of objects in parallel
-        await Promise.all(
-          listResponse.Contents.map((object) =>
-            this.connection.send(
-              new CopyObjectCommand({
-                Bucket: Bucket,
-                Key: object.Key!,
-                CopySource: `${this.backupsBucketName}-${Bucket}/${object.Key}`,
-              })
-            )
-          )
-        );
-
-        marker = listResponse.NextMarker;
-      } while (marker);
-    } catch (error) {
-      throw new S3RestoreError(`Failed to restore bucket: ${error}`);
     }
   }
 
@@ -239,15 +129,16 @@ export class DuplicateStrategy extends S3RollBackStrategy {
         new HeadBucketCommand({ Bucket: this.backupsBucketName })
       );
       this.isGeneralBackupBucketCreated = true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (
-        error.name === 'NotFound' ||
-        error.$metadata?.httpStatusCode === 404
+        isS3ServiceError(error) &&
+        (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404)
       ) {
         await this.connection.send(
           new CreateBucketCommand({ Bucket: this.backupsBucketName })
         );
         this.isGeneralBackupBucketCreated = true;
+        this.createdGeneralBackupBucket = true;
       } else {
         throw new S3BackupError(`Failed to create backup bucket: ${error}`);
       }

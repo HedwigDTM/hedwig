@@ -1,11 +1,11 @@
-import { RedisClientType } from 'redis';
+import { RedisConnection } from './RedisConnection';
 import { RedisRollBackStrategy } from './RedisRollbackStrategy';
 import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
 import { InMemoryStrategy } from './RedisStrategies/InMemoryStrategy';
 import { DuplicateStrategy } from './RedisStrategies/DuplicateStrategy';
 
 export const RedisRollbackFactory = (
-  connection: RedisClientType,
+  connection: RedisConnection,
   strategy: RedisRollbackStrategyType,
   transactionID: string,
   backupHashName?: string

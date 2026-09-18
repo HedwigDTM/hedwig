@@ -19,6 +19,7 @@ import {
   DeleteObjectCommandOutput,
   CreateBucketCommandOutput,
   DeleteBucketCommandOutput,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { S3RollbackFactory } from './S3RollbackFactory';
 import { S3RollbackStrategyType } from '../Types/S3/S3RollBackStrategy';
@@ -65,6 +66,34 @@ export class S3RollbackClient extends RollbackableClient {
     );
   }
 
+  private isNotFoundError(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) {
+      return false;
+    }
+    // S3 service errors expose name and $metadata on the error object
+    const s3Error = error as {
+      name?: string;
+      $metadata?: { httpStatusCode?: number };
+    };
+    return (
+      s3Error.name === 'NotFound' ||
+      s3Error.name === 'NoSuchKey' ||
+      s3Error.$metadata?.httpStatusCode === 404
+    );
+  }
+
+  private isBucketAlreadyError(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) {
+      return false;
+    }
+    // S3 service errors expose name on the error object
+    const s3Error = error as { name?: string };
+    return (
+      s3Error.name === 'BucketAlreadyOwnedByYou' ||
+      s3Error.name === 'BucketAlreadyExists'
+    );
+  }
+
   /**
    * Uploads an object to the specified S3 bucket and stores a rollback action.
    *
@@ -84,6 +113,11 @@ export class S3RollbackClient extends RollbackableClient {
       objExisted = true;
       await this.rollbackStrategy.backupFile(params);
     } catch (error) {
+      if (!this.isNotFoundError(error)) {
+        // A non-404 head failure (403, 5xx, network) must not be treated as
+        // "object does not exist" - proceeding would delete real data on rollback
+        throw error;
+      }
       // Object doesn't exist, continue with put operation
     }
 
@@ -113,6 +147,16 @@ export class S3RollbackClient extends RollbackableClient {
   public async deleteObject(
     params: S3ObjectParams
   ): Promise<DeleteObjectCommandOutput> {
+    try {
+      await this.connection.send(new HeadObjectCommand(params));
+    } catch (error) {
+      if (!this.isNotFoundError(error)) {
+        throw error;
+      }
+      // Deleting a missing object is a no-op: nothing to back up, nothing to restore
+      return await this.connection.send(new DeleteObjectCommand(params));
+    }
+
     await this.rollbackStrategy.backupFile(params);
     const result = await this.connection.send(new DeleteObjectCommand(params));
 
@@ -139,7 +183,14 @@ export class S3RollbackClient extends RollbackableClient {
       await this.connection.send(new HeadBucketCommand(params));
       bucketExists = true;
     } catch (error) {
-      // Bucket doesn't exist
+      if (this.isNotFoundError(error)) {
+        // Bucket doesn't exist
+      } else if (this.isBucketAlreadyError(error)) {
+        // Head was denied or raced with a create: never delete an existing bucket on rollback
+        bucketExists = true;
+      } else {
+        throw error;
+      }
     }
 
     const result = await this.connection.send(new CreateBucketCommand(params));
@@ -158,17 +209,39 @@ export class S3RollbackClient extends RollbackableClient {
   /**
    * Deletes an S3 bucket and stores a rollback action.
    *
+   * S3 only deletes empty buckets, so this targets empty buckets: a missing
+   * bucket or a non-empty bucket fails fast with a clear error instead of
+   * running an expensive backup the delete would reject anyway. Rollback
+   * recreates the (empty) bucket.
+   *
    * @param {S3BucketParams} params - The parameters for the S3 `deleteBucket` command (Bucket, etc.).
    * @returns {Promise<DeleteBucketCommandOutput>} A promise that resolves with the result of the `deleteBucket` command.
    */
   public async deleteBucket(
     params: S3BucketParams
   ): Promise<DeleteBucketCommandOutput> {
-    await this.rollbackStrategy.backupBucket(params);
+    try {
+      await this.connection.send(new HeadBucketCommand(params));
+    } catch (error) {
+      if (this.isNotFoundError(error)) {
+        throw new Error(`Bucket ${params.Bucket} does not exist`);
+      }
+      throw error;
+    }
+
+    const listResponse = await this.connection.send(
+      new ListObjectsV2Command({ Bucket: params.Bucket, MaxKeys: 2 })
+    );
+    if ((listResponse.Contents ?? []).length > 0 || listResponse.IsTruncated) {
+      throw new Error(
+        `Bucket ${params.Bucket} is not empty - delete its objects first`
+      );
+    }
+
     const result = await this.connection.send(new DeleteBucketCommand(params));
 
     const rollbackAction = async () => {
-      await this.rollbackStrategy.restoreBucket(params);
+      await this.connection.send(new CreateBucketCommand(params));
     };
 
     this.rollbackActions.push(rollbackAction);

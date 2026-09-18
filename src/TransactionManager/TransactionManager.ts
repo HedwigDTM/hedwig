@@ -11,6 +11,28 @@ import { RedisConfig } from '../Types/Redis/RedisConfig';
 import { RedisRollbackClient } from '../RedisClient/RedisClient';
 import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
 import { createClient, RedisClientType } from 'redis';
+import RollbackError from '../RollbackableClient/Errors/RollbackError';
+
+/**
+ * Promise.allSettled reports status as a string-literal union; the enum keeps
+ * the comparisons symbolic at the call sites.
+ */
+enum SettledStatus {
+  Fulfilled = 'fulfilled',
+  Rejected = 'rejected',
+}
+function isRejectedOutcome(
+  outcome: PromiseSettledResult<unknown>
+): outcome is PromiseRejectedResult {
+  const status: string = outcome.status;
+  return status === SettledStatus.Rejected;
+}
+
+function isErrorWithCleanup(
+  error: unknown
+): error is Error & { cleanupFailures?: unknown[] } {
+  return error instanceof Error;
+}
 
 /**
  * TransactionManager is responsible for managing distributed transactions
@@ -39,6 +61,7 @@ export default class TransactionManager {
       S3Client?: S3RollbackClient;
       RedisClient?: RedisRollbackClient;
     } = {};
+    let ownedRedisConnection: { quit(): Promise<unknown> } | null = null;
 
     if (this.s3Config) {
       clients.S3Client = new S3RollbackClient(
@@ -52,28 +75,75 @@ export default class TransactionManager {
     }
 
     if (this.redisConfig) {
+      const { connection, rollbackStrategy, backupHashName, ...clientOptions } =
+        this.redisConfig;
+      const redisClient =
+        connection ?? (await createClient(clientOptions).connect());
+      // Only connections created here are disconnected during cleanup;
+      // a user-supplied connection stays owned by the caller
+      if (!connection) {
+        ownedRedisConnection = redisClient;
+      }
       clients.RedisClient = new RedisRollbackClient(
         transactionID,
-        // If the user provided already established connection, use it
-        this.redisConfig.connection ||
-          (await (createClient(this.redisConfig) as RedisClientType).connect()),
-        this.redisConfig.rollbackStrategy
-          ? this.redisConfig.rollbackStrategy
-          : RedisRollbackStrategyType.IN_MEMORY,
-        this.redisConfig.backupHashName
+        redisClient,
+        rollbackStrategy ?? RedisRollbackStrategyType.IN_MEMORY,
+        backupHashName
       );
     }
+
+    let transactionError: unknown;
+    let transactionFailed = false;
 
     try {
       await callback(clients);
     } catch (error) {
-      await Promise.all(
+      transactionFailed = true;
+      transactionError = error;
+    }
+
+    const cleanupFailures: unknown[] = [];
+
+    if (transactionFailed) {
+      const rollbackOutcomes = await Promise.allSettled(
         Object.values(clients).map((client) => client.rollback())
       );
-      throw error;
-    } finally {
-      await Promise.all(
-        Object.values(clients).map((client) => client.closeTransaction())
+      for (const outcome of rollbackOutcomes) {
+        if (isRejectedOutcome(outcome)) {
+          cleanupFailures.push(outcome.reason);
+        }
+      }
+    }
+
+    const closeOutcomes = await Promise.allSettled(
+      Object.values(clients).map((client) => client.closeTransaction())
+    );
+    for (const outcome of closeOutcomes) {
+      if (isRejectedOutcome(outcome)) {
+        cleanupFailures.push(outcome.reason);
+      }
+    }
+
+    if (ownedRedisConnection) {
+      try {
+        await ownedRedisConnection.quit();
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
+    }
+
+    if (transactionFailed) {
+      // The original error always wins - cleanup failures are attached, never thrown instead
+      if (cleanupFailures.length > 0 && isErrorWithCleanup(transactionError)) {
+        transactionError.cleanupFailures = cleanupFailures;
+      }
+      throw transactionError;
+    }
+
+    if (cleanupFailures.length > 0) {
+      throw new RollbackError(
+        'Transaction succeeded but cleanup failed',
+        cleanupFailures
       );
     }
   }
