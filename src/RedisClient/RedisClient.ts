@@ -1,5 +1,5 @@
 import RollbackableClient from '../RollbackableClient/RollbackableClient';
-import { RedisClientType } from 'redis';
+import { RedisConnection } from './RedisConnection';
 import { RedisRollBackStrategy } from './RedisRollbackStrategy';
 import { RedisRollbackStrategyType } from '../Types/Redis/RedisRollbackStrategy';
 import { RedisRollbackFactory } from './RedisRollbackFactory';
@@ -8,12 +8,12 @@ export class RedisRollbackClient extends RollbackableClient {
   public closeTransaction(): Promise<void> {
     return this.rollbackStrategy.closeTransaction();
   }
-  private connection: RedisClientType;
+  private connection: RedisConnection;
   private rollbackStrategy: RedisRollBackStrategy;
 
   constructor(
     transactionID: string,
-    connection: RedisClientType,
+    connection: RedisConnection,
     rollbackStrategyType: RedisRollbackStrategyType,
     backupHashName?: string
   ) {

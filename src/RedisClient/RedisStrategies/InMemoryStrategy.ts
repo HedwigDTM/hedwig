@@ -1,4 +1,4 @@
-import { RedisClientType } from 'redis';
+import { RedisConnection } from '../RedisConnection';
 import {
   RedisBackupRecord,
   RedisRollBackStrategy,
@@ -11,7 +11,7 @@ import RollbackError from '../../RollbackableClient/Errors/RollbackError';
 export class InMemoryStrategy extends RedisRollBackStrategy {
   private backup: Map<string, RedisBackupRecord> = new Map();
 
-  constructor(_connection: RedisClientType) {
+  constructor(_connection: RedisConnection) {
     super(_connection);
     this.backup = new Map<string, RedisBackupRecord>();
   }

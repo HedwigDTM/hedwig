@@ -1,4 +1,4 @@
-import { RedisClientType } from 'redis';
+import { RedisConnection } from './RedisConnection';
 
 /**
  * Snapshot of a key's state before a transaction touched it.
@@ -8,9 +8,9 @@ export type RedisBackupRecord =
   | { existed: true; value: string }
   | { existed: false; value: null };
 export abstract class RedisRollBackStrategy {
-  protected connection: RedisClientType;
+  protected connection: RedisConnection;
 
-  constructor(_connection: RedisClientType) {
+  constructor(_connection: RedisConnection) {
     this.connection = _connection;
   }
 

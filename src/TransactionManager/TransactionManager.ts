@@ -61,7 +61,7 @@ export default class TransactionManager {
       S3Client?: S3RollbackClient;
       RedisClient?: RedisRollbackClient;
     } = {};
-    let ownedRedisConnection: RedisClientType | null = null;
+    let ownedRedisConnection: { quit(): Promise<unknown> } | null = null;
 
     if (this.s3Config) {
       clients.S3Client = new S3RollbackClient(
@@ -77,13 +77,8 @@ export default class TransactionManager {
     if (this.redisConfig) {
       const { connection, rollbackStrategy, backupHashName, ...clientOptions } =
         this.redisConfig;
-      // node-redis v4 overload inference on the loose RedisClientOptions type
-      // (plus duplicate @redis type copies in the current tree) breaks strict
-      // assignability here; the dependency-surgery issue (#69) removes the
-      // duplicate types, this cast stays a one-line boundary
-      const redisClient: RedisClientType =
-        connection ??
-        ((await createClient(clientOptions).connect()) as RedisClientType);
+      const redisClient =
+        connection ?? (await createClient(clientOptions).connect());
       // Only connections created here are disconnected during cleanup;
       // a user-supplied connection stays owned by the caller
       if (!connection) {

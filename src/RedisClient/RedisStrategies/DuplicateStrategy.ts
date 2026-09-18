@@ -1,4 +1,4 @@
-import { RedisClientType } from 'redis';
+import { RedisConnection } from '../RedisConnection';
 import {
   RedisBackupRecord,
   RedisRollBackStrategy,
@@ -12,7 +12,7 @@ export class DuplicateStrategy extends RedisRollBackStrategy {
   private backupHashName: string;
 
   constructor(
-    _connection: RedisClientType,
+    _connection: RedisConnection,
     transactionID: string,
     backupHashName: string
   ) {
