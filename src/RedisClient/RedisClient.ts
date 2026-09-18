@@ -23,6 +23,7 @@ export class RedisRollbackClient extends RollbackableClient {
     this.rollbackStrategy = RedisRollbackFactory(
       this.connection,
       rollbackStrategyType,
+      transactionID,
       backupHashName
     );
   }

@@ -15,11 +15,21 @@ import {
 
 export class DuplicateStrategy extends S3RollBackStrategy {
   private backupsBucketName: string;
+  private transactionID: string;
   private isGeneralBackupBucketCreated: boolean = false;
 
-  constructor(_connection: AWSClient, backupsBucketName: string) {
+  constructor(
+    _connection: AWSClient,
+    transactionID: string,
+    backupsBucketName: string
+  ) {
     super(_connection);
     this.backupsBucketName = backupsBucketName;
+    this.transactionID = transactionID;
+  }
+
+  private backupKey(params: S3ObjectParams): string {
+    return `${this.transactionID}/${params.Bucket}/${params.Key}`;
   }
 
   /**
@@ -37,7 +47,7 @@ export class DuplicateStrategy extends S3RollBackStrategy {
       await this.connection.send(
         new CopyObjectCommand({
           Bucket: this.backupsBucketName,
-          Key: `${Key}-backup`,
+          Key: this.backupKey(params),
           CopySource: `${Bucket}/${Key}`,
         })
       );
@@ -59,14 +69,14 @@ export class DuplicateStrategy extends S3RollBackStrategy {
         new CopyObjectCommand({
           Bucket: Bucket,
           Key: Key,
-          CopySource: `${this.backupsBucketName}/${Key}-backup`,
+          CopySource: `${this.backupsBucketName}/${this.backupKey(params)}`,
         })
       );
 
       await this.connection.send(
         new DeleteObjectCommand({
           Bucket: this.backupsBucketName,
-          Key: `${Key}-backup`,
+          Key: this.backupKey(params),
         })
       );
     } catch (error) {

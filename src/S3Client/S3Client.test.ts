@@ -272,18 +272,18 @@ describe('S3Client', () => {
       });
       expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
         Bucket: 'hedwig-backups',
-        Key: 'key-backup',
+        Key: 'test/bucketName/key',
         CopySource: 'bucketName/key',
       });
       expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, params);
       expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        CopySource: 'hedwig-backups/key-backup',
+        CopySource: 'hedwig-backups/test/bucketName/key',
       });
       expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, {
         Bucket: 'hedwig-backups',
-        Key: 'key-backup',
+        Key: 'test/bucketName/key',
       });
     });
 
@@ -327,18 +327,18 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(HeadObjectCommand, params);
       expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
         Bucket: 'hedwig-backups',
-        Key: 'key-backup',
+        Key: 'test/bucketName/key',
         CopySource: 'bucketName/key',
       });
       expect(s3Mock).toHaveReceivedCommandWith(PutObjectCommand, params);
       expect(s3Mock).toHaveReceivedCommandWith(CopyObjectCommand, {
         Bucket: 'bucketName',
         Key: 'key',
-        CopySource: 'hedwig-backups/key-backup',
+        CopySource: 'hedwig-backups/test/bucketName/key',
       });
       expect(s3Mock).toHaveReceivedCommandWith(DeleteObjectCommand, {
         Bucket: 'hedwig-backups',
-        Key: 'key-backup',
+        Key: 'test/bucketName/key',
       });
     });
 
@@ -375,6 +375,75 @@ describe('S3Client', () => {
         Bucket: 'bucketName',
         Key: 'key',
       });
+    });
+
+    it('Checking .putObject() DUPLICATE - concurrent transactions on the same key use isolated backup keys', async () => {
+      s3Mock.on(HeadObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(CopyObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(PutObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+
+      const clientA = new S3RollbackClient(
+        'tx-a',
+        connection,
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
+      );
+      const clientB = new S3RollbackClient(
+        'tx-b',
+        connection,
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
+      );
+      const params: S3ObjectParams = {
+        Bucket: 'bucketName',
+        Key: 'key',
+        Body: Buffer.from('value'),
+      };
+
+      await clientA.putObject(params);
+      await clientB.putObject(params);
+
+      const backupKeys = s3Mock
+        .commandCalls(CopyObjectCommand)
+        .map((call) => call.args[0].input.Key);
+      expect(backupKeys).toEqual(
+        expect.arrayContaining(['tx-a/bucketName/key', 'tx-b/bucketName/key'])
+      );
+    });
+
+    it('Checking .putObject() DUPLICATE - same key in different buckets uses bucket-scoped backup keys', async () => {
+      s3Mock.on(HeadObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(CopyObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+      s3Mock.on(PutObjectCommand).resolves({
+        $metadata: { httpStatusCode: 200 },
+      });
+
+      const mockS3Client = new S3RollbackClient(
+        'test',
+        connection,
+        S3RollbackStrategyType.DUPLICATE_FILE,
+        'hedwig-backups'
+      );
+
+      await mockS3Client.putObject({ Bucket: 'bucket-a', Key: 'shared' });
+      await mockS3Client.putObject({ Bucket: 'bucket-b', Key: 'shared' });
+
+      const backupKeys = s3Mock
+        .commandCalls(CopyObjectCommand)
+        .map((call) => call.args[0].input.Key);
+      expect(backupKeys).toEqual(
+        expect.arrayContaining(['test/bucket-a/shared', 'test/bucket-b/shared'])
+      );
     });
   });
 
@@ -529,7 +598,7 @@ describe('S3Client', () => {
       const mockStream = new Readable();
       mockStream.push('hello world');
       mockStream.push(null);
-      
+
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,

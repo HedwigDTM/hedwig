@@ -7,6 +7,7 @@ import { DuplicateStrategy } from './RedisStrategies/DuplicateStrategy';
 export const RedisRollbackFactory = (
   connection: RedisClientType,
   strategy: RedisRollbackStrategyType,
+  transactionID: string,
   backupHashName?: string
 ): RedisRollBackStrategy => {
   switch (strategy) {
@@ -16,6 +17,7 @@ export const RedisRollbackFactory = (
     case RedisRollbackStrategyType.DUPLICATE_FILE: {
       return new DuplicateStrategy(
         connection,
+        transactionID,
         backupHashName ? backupHashName : 'Hedwig-Backups'
       );
     }
