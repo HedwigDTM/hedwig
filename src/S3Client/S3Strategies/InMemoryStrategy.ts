@@ -80,7 +80,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
   public async restoreFile(params: S3ObjectParams): Promise<void> {
     const { Bucket, Key } = params;
     const bucketBackup = this.storage.buckets.get(Bucket);
-    
+
     if (!bucketBackup) {
       throw new S3RestoreError('No backup found for the specified bucket');
     }
@@ -141,7 +141,10 @@ export class InMemoryStrategy extends S3RollBackStrategy {
             if (!data.Body) {
               throw new S3BackupError('No data found in the S3 object');
             }
-            bucketBackup.objects.set(obj.Key, await data.Body.transformToByteArray());
+            bucketBackup.objects.set(
+              obj.Key,
+              await data.Body.transformToByteArray()
+            );
           })
         );
 
@@ -161,7 +164,7 @@ export class InMemoryStrategy extends S3RollBackStrategy {
    */
   public async restoreBucket(params: S3BucketParams): Promise<void> {
     const bucketBackup = this.storage.buckets.get(params.Bucket);
-    
+
     if (!bucketBackup) {
       throw new S3RestoreError('No backup found for the specified bucket');
     }
@@ -170,15 +173,17 @@ export class InMemoryStrategy extends S3RollBackStrategy {
       await this.connection.send(new CreateBucketCommand(params));
 
       await Promise.all(
-        Array.from(bucketBackup.objects.entries()).map(async ([key, object]) => {
-          await this.connection.send(
-            new PutObjectCommand({
-              Bucket: params.Bucket,
-              Key: key,
-              Body: object,
-            })
-          );
-        })
+        Array.from(bucketBackup.objects.entries()).map(
+          async ([key, object]) => {
+            await this.connection.send(
+              new PutObjectCommand({
+                Bucket: params.Bucket,
+                Key: key,
+                Body: object,
+              })
+            );
+          }
+        )
       );
     } catch (error) {
       throw new S3RestoreError(`Failed to restore bucket to S3: ${error}`);

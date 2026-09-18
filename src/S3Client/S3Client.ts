@@ -65,6 +65,34 @@ export class S3RollbackClient extends RollbackableClient {
     );
   }
 
+  private isNotFoundError(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) {
+      return false;
+    }
+    // S3 service errors expose name and $metadata on the error object
+    const s3Error = error as {
+      name?: string;
+      $metadata?: { httpStatusCode?: number };
+    };
+    return (
+      s3Error.name === 'NotFound' ||
+      s3Error.name === 'NoSuchKey' ||
+      s3Error.$metadata?.httpStatusCode === 404
+    );
+  }
+
+  private isBucketAlreadyError(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null) {
+      return false;
+    }
+    // S3 service errors expose name on the error object
+    const s3Error = error as { name?: string };
+    return (
+      s3Error.name === 'BucketAlreadyOwnedByYou' ||
+      s3Error.name === 'BucketAlreadyExists'
+    );
+  }
+
   /**
    * Uploads an object to the specified S3 bucket and stores a rollback action.
    *
@@ -84,6 +112,11 @@ export class S3RollbackClient extends RollbackableClient {
       objExisted = true;
       await this.rollbackStrategy.backupFile(params);
     } catch (error) {
+      if (!this.isNotFoundError(error)) {
+        // A non-404 head failure (403, 5xx, network) must not be treated as
+        // "object does not exist" - proceeding would delete real data on rollback
+        throw error;
+      }
       // Object doesn't exist, continue with put operation
     }
 
@@ -113,6 +146,16 @@ export class S3RollbackClient extends RollbackableClient {
   public async deleteObject(
     params: S3ObjectParams
   ): Promise<DeleteObjectCommandOutput> {
+    try {
+      await this.connection.send(new HeadObjectCommand(params));
+    } catch (error) {
+      if (!this.isNotFoundError(error)) {
+        throw error;
+      }
+      // Deleting a missing object is a no-op: nothing to back up, nothing to restore
+      return await this.connection.send(new DeleteObjectCommand(params));
+    }
+
     await this.rollbackStrategy.backupFile(params);
     const result = await this.connection.send(new DeleteObjectCommand(params));
 
@@ -139,7 +182,14 @@ export class S3RollbackClient extends RollbackableClient {
       await this.connection.send(new HeadBucketCommand(params));
       bucketExists = true;
     } catch (error) {
-      // Bucket doesn't exist
+      if (this.isNotFoundError(error)) {
+        // Bucket doesn't exist
+      } else if (this.isBucketAlreadyError(error)) {
+        // Head was denied or raced with a create: never delete an existing bucket on rollback
+        bucketExists = true;
+      } else {
+        throw error;
+      }
     }
 
     const result = await this.connection.send(new CreateBucketCommand(params));
