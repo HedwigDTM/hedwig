@@ -122,3 +122,10 @@ try {
 - `HedwigError` — base of everything hedwig throws
 - `RollbackError` — rollback/cleanup aggregation, `rollbackFailures: unknown[]`
 - `S3BackupError` / `S3RestoreError` — S3 backup and restore failures
+
+## Custom actions (beta)
+
+`customActions.register(action)` runs `execute()` immediately and records
+`rollback()` as compensation. See [custom actions](./custom-actions.md).
+
+> **Status: beta.**
