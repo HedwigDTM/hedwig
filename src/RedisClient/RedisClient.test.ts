@@ -10,7 +10,7 @@ describe('RedisClient', () => {
     connection = mock<RedisClientType>();
   });
 
-  it('Checking .get - should get the value', async () => {
+  it('get should return the value', async () => {
     const mockRedisClient = new RedisRollbackClient(
       'test',
       connection,
@@ -20,7 +20,7 @@ describe('RedisClient', () => {
     await expect(connection.get).toHaveBeenCalledWith('key');
   });
 
-  it('Checking .set IN MEMORY - file doesnt exists - should set the value and delete it', async () => {
+  it('set (IN_MEMORY, missing key) should set the value and delete it on rollback', async () => {
     connection.get.mockResolvedValueOnce(null);
     connection.set.mockResolvedValueOnce('OK');
     connection.del.mockResolvedValueOnce(1);
@@ -40,7 +40,7 @@ describe('RedisClient', () => {
     await expect(connection.del).toHaveBeenCalledWith('key');
   });
 
-  it('Checking .set IN MEMORY - file exists - should set the new value and rollback to old one', async () => {
+  it('set (IN_MEMORY, existing key) should set the new value and restore the old one on rollback', async () => {
     connection.set.mockResolvedValueOnce('OK');
     connection.get.mockResolvedValueOnce('previousValue');
 
@@ -58,7 +58,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'previousValue');
   });
 
-  it('Checking .set DUPLICATE FILE - file doesnt exists - should set the value and delete it', async () => {
+  it('set (DUPLICATE_FILE, missing key) should set the value and delete it on rollback', async () => {
     connection.get.mockResolvedValueOnce(null);
     connection.set.mockResolvedValueOnce('OK');
     connection.hGet.mockResolvedValueOnce(
@@ -85,7 +85,7 @@ describe('RedisClient', () => {
     await expect(connection.del).toHaveBeenCalledWith('key');
   });
 
-  it('Checking .set DUPLICATE FILE - file exists - should set the new value and rollback to old one', async () => {
+  it('set (DUPLICATE_FILE, existing key) should set the new value and restore the old one on rollback', async () => {
     connection.set.mockResolvedValueOnce('OK');
     connection.get.mockResolvedValueOnce('previousValue');
     connection.hGet.mockResolvedValueOnce(
@@ -116,7 +116,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'previousValue');
   });
 
-  it('Checking .set DUPLICATE FILE - concurrent transactions use isolated backup hashes', async () => {
+  it('set (DUPLICATE_FILE) should isolate backup hashes per concurrent transaction', async () => {
     connection.set.mockResolvedValue('OK');
     connection.get.mockResolvedValue('previousValue');
     connection.hSet.mockResolvedValue(1);
@@ -148,7 +148,7 @@ describe('RedisClient', () => {
     );
   });
 
-  it('Checking .closeTransaction() DUPLICATE FILE - should delete the transaction backup hash', async () => {
+  it('closeTransaction (DUPLICATE_FILE) should delete the transaction backup hash', async () => {
     const mockRedisClient = new RedisRollbackClient(
       'test',
       connection,
@@ -159,7 +159,7 @@ describe('RedisClient', () => {
     await expect(connection.del).toHaveBeenCalledWith('backupHashName:test');
   });
 
-  it('Checking .del IN MEMORY - item exists - should delete and rollback to old value', async () => {
+  it('del (IN_MEMORY, existing key) should delete the key and restore the old value on rollback', async () => {
     connection.del.mockResolvedValueOnce(1);
     connection.get.mockResolvedValueOnce('value');
 
@@ -176,7 +176,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'value');
   });
 
-  it('Checking .del DUPLICATE FILE - item exists - should delete and rollback to old value', async () => {
+  it('del (DUPLICATE_FILE, existing key) should delete the value and restore the old one on rollback', async () => {
     connection.del.mockResolvedValueOnce(1);
     connection.get.mockResolvedValueOnce('value');
     connection.hGet.mockResolvedValueOnce(
@@ -207,7 +207,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', 'value');
   });
 
-  it('Checking .incr - should restore the exact pre-transaction value on rollback', async () => {
+  it('incr should restore the exact pre-transaction value on rollback', async () => {
     connection.get.mockResolvedValueOnce('5');
     connection.incr.mockResolvedValueOnce(6);
     connection.set.mockResolvedValue('OK');
@@ -226,7 +226,7 @@ describe('RedisClient', () => {
     await expect(connection.decr).not.toHaveBeenCalled();
   });
 
-  it('Checking .incr - missing key - should delete the key on rollback instead of leaving it at zero', async () => {
+  it('incr (missing key) should delete the key on rollback instead of leaving it at zero', async () => {
     connection.get.mockResolvedValueOnce(null);
     connection.incr.mockResolvedValueOnce(1);
     connection.del.mockResolvedValue(1);
@@ -243,7 +243,7 @@ describe('RedisClient', () => {
     await expect(connection.set).not.toHaveBeenCalled();
   });
 
-  it('Checking .decr - should restore the exact pre-transaction value on rollback', async () => {
+  it('decr should restore the exact pre-transaction value on rollback', async () => {
     connection.get.mockResolvedValueOnce('3');
     connection.decr.mockResolvedValueOnce(2);
     connection.set.mockResolvedValue('OK');
@@ -262,7 +262,7 @@ describe('RedisClient', () => {
     await expect(connection.incr).not.toHaveBeenCalled();
   });
 
-  it('Checking .del IN MEMORY - missing key - should roll back to no key without failing', async () => {
+  it('del (IN_MEMORY, missing key) should roll back to no key without failing', async () => {
     connection.get.mockResolvedValueOnce(null);
     connection.del.mockResolvedValue(1);
 
@@ -277,7 +277,7 @@ describe('RedisClient', () => {
     await expect(connection.del).toHaveBeenCalledWith('missing');
   });
 
-  it('Checking .set IN MEMORY - empty string value - should restore the empty string on rollback', async () => {
+  it('set (IN_MEMORY, empty string) should restore the empty string on rollback', async () => {
     connection.get.mockResolvedValueOnce('');
     connection.set.mockResolvedValue('OK');
 
@@ -293,7 +293,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', '');
   });
 
-  it('Checking .set IN MEMORY - backup failure should reject instead of floating', async () => {
+  it('set (IN_MEMORY) should reject when the backup fails instead of floating the rejection', async () => {
     connection.get.mockRejectedValue(new Error('connection lost'));
 
     const mockRedisClient = new RedisRollbackClient(
@@ -308,7 +308,7 @@ describe('RedisClient', () => {
     expect(connection.set).not.toHaveBeenCalled();
   });
 
-  it('Checking .set DUPLICATE FILE - empty string value - should restore the empty string on rollback', async () => {
+  it('set (DUPLICATE_FILE, empty string) should restore the empty string on rollback', async () => {
     connection.get.mockResolvedValueOnce('');
     connection.set.mockResolvedValue('OK');
     connection.hSet.mockResolvedValue(1);
@@ -334,7 +334,7 @@ describe('RedisClient', () => {
     await expect(connection.set).toHaveBeenCalledWith('key', '');
   });
 
-  it('Checking .del DUPLICATE FILE - empty string value - should restore the empty string on rollback', async () => {
+  it('del (DUPLICATE_FILE, empty string) should restore the empty string on rollback', async () => {
     connection.get.mockResolvedValueOnce('');
     connection.del.mockResolvedValue(1);
     connection.hSet.mockResolvedValue(1);
