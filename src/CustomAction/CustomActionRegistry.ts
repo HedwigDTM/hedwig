@@ -1,4 +1,5 @@
 import RollbackableClient from '../RollbackableClient/RollbackableClient';
+import { TransactionStateStore } from '../types/transaction-state';
 import { CustomActionsApi, ICustomAction } from './ICustomAction';
 
 /**
@@ -11,8 +12,8 @@ export class CustomActionRegistry
   extends RollbackableClient
   implements CustomActionsApi
 {
-  constructor(transactionID: string) {
-    super(transactionID);
+  constructor(transactionID: string, stateStore?: TransactionStateStore) {
+    super(transactionID, stateStore);
   }
 
   public async register(action: ICustomAction): Promise<unknown> {
@@ -23,6 +24,7 @@ export class CustomActionRegistry
     };
 
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('register');
 
     try {
       return await action.execute();

@@ -11,6 +11,7 @@ import {
   TransactionCallbackFunction,
   TransactionManagerConfig,
 } from '../types/transaction-manager';
+import { TransactionStateStore } from '../types/transaction-state';
 import { createClient } from 'redis';
 import { RollbackError } from '../errors';
 
@@ -47,11 +48,13 @@ export default class TransactionManager<
   private s3Config?: S3Config;
   private redisConfig?: RedisConfig;
   private verbose: boolean;
+  private stateStore?: TransactionStateStore;
 
   constructor(config: C) {
     this.s3Config = config.s3Config;
     this.redisConfig = config.redisConfig;
     this.verbose = config.verbose === true;
+    this.stateStore = config.stateStore;
   }
 
   /**
@@ -75,12 +78,22 @@ export default class TransactionManager<
   ): Promise<Result> {
     const transactionID = uuidv4();
     this.log(`transaction ${transactionID} started`);
+    if (this.stateStore) {
+      await this.stateStore.start({
+        id: transactionID,
+        status: 'in-flight',
+        startedAt: new Date().toISOString(),
+      });
+    }
     const clients: {
       S3Client?: S3RollbackClient;
       RedisClient?: RedisRollbackClient;
       CustomActions?: CustomActionRegistry;
     } = {};
-    const customActions = new CustomActionRegistry(transactionID);
+    const customActions = new CustomActionRegistry(
+      transactionID,
+      this.stateStore
+    );
     clients.CustomActions = customActions;
     let ownedRedisConnection: { quit(): Promise<unknown> } | null = null;
 
@@ -91,7 +104,8 @@ export default class TransactionManager<
         this.s3Config.rollbackStrategy
           ? this.s3Config.rollbackStrategy
           : S3RollbackStrategyType.IN_MEMORY,
-        this.s3Config.backupBucketName
+        this.s3Config.backupBucketName,
+        this.stateStore
       );
     }
 
@@ -109,7 +123,8 @@ export default class TransactionManager<
         transactionID,
         redisClient,
         rollbackStrategy ?? RedisRollbackStrategyType.IN_MEMORY,
-        backupHashName
+        backupHashName,
+        this.stateStore
       );
     }
 
@@ -185,6 +200,14 @@ export default class TransactionManager<
       this.log(
         `transaction ${transactionID} rolled back with attached cleanup failures`
       );
+      if (this.stateStore) {
+        if (cleanupFailures.length === 0) {
+          await this.stateStore.markRolledBack(transactionID);
+        } else {
+          // Left in-flight so recovery can re-attempt the failed steps
+          this.log(`transaction ${transactionID} left in-flight for recovery`);
+        }
+      }
       throw transactionError;
     }
 
@@ -195,6 +218,9 @@ export default class TransactionManager<
       );
     }
 
+    if (this.stateStore) {
+      await this.stateStore.markCommitted(transactionID);
+    }
     this.log(`transaction ${transactionID} committed`);
     return transactionResult;
   }

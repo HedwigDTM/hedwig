@@ -11,6 +11,13 @@ import {
   S3BackupError,
   S3RestoreError,
 } from './errors';
+import { InMemoryStateStore } from './state-store/InMemoryStateStore';
+import { RedisStateStore } from './state-store/RedisStateStore';
+import {
+  recoverInFlightTransactions,
+  RecoveryOptions,
+  RecoverySummary,
+} from './recovery/recovery';
 
 export {
   TransactionManager,
@@ -24,6 +31,9 @@ export {
   RollbackError,
   S3BackupError,
   S3RestoreError,
+  InMemoryStateStore,
+  RedisStateStore,
+  recoverInFlightTransactions,
 };
 
 export type { S3Config, S3ObjectParams, S3BucketParams } from './types/s3';
@@ -39,3 +49,11 @@ export type {
   ICustomAction,
   CustomActionsApi,
 } from './CustomAction/ICustomAction';
+export type {
+  TransactionStateStore,
+  TransactionRecord,
+  RecordedAction,
+  TransactionStatus,
+  ClientKind,
+} from './types/transaction-state';
+export type { RecoveryOptions, RecoverySummary } from './recovery/recovery';
