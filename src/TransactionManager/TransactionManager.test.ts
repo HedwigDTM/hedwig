@@ -39,6 +39,51 @@ describe('TransactionManager', () => {
     });
   });
 
+  it('should log lifecycle events when verbose is enabled', async () => {
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    s3Instance.closeTransaction.mockResolvedValue();
+    redisInstance.closeTransaction.mockResolvedValue();
+    s3Instance.rollback.mockResolvedValue();
+    redisInstance.rollback.mockResolvedValue();
+
+    const verboseManager = new TransactionManager({
+      s3Config: {
+        region: 'us-east-1',
+        rollbackStrategy: S3RollbackStrategyType.IN_MEMORY,
+      },
+      redisConfig: {
+        url: 'redis://localhost:6379',
+        rollbackStrategy: RedisRollbackStrategyType.IN_MEMORY,
+        connection: mock<RedisClientType>(),
+      },
+      verbose: true,
+    });
+
+    await verboseManager.transaction(async () => undefined);
+
+    const messages = infoSpy.mock.calls.map((call) => call[0]);
+    expect(messages.some((m) => m.includes('started'))).toBe(true);
+    expect(messages.some((m) => m.includes('committed'))).toBe(true);
+    infoSpy.mockRestore();
+  });
+
+  it('should stay silent when verbose is not enabled', async () => {
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    s3Instance.closeTransaction.mockResolvedValue();
+    redisInstance.closeTransaction.mockResolvedValue();
+    s3Instance.rollback.mockResolvedValue();
+    redisInstance.rollback.mockResolvedValue();
+
+    await manager.transaction(async () => undefined);
+
+    expect(infoSpy).not.toHaveBeenCalled();
+    infoSpy.mockRestore();
+  });
+
   it('should return the callback result and expose configured clients as non-optional', async () => {
     s3Instance.closeTransaction.mockResolvedValue();
     redisInstance.closeTransaction.mockResolvedValue();
@@ -160,8 +205,8 @@ describe('TransactionManager', () => {
       ownedConnection.connect.mockResolvedValue(ownedConnection);
       ownedConnection.quit.mockResolvedValue('OK');
       MockedCreateClient.mockReturnValue(ownedConnection);
-      MockedCreateClient.mockClear();
       suppliedConnection = mock<RedisClientType>();
+      MockedCreateClient.mockClear();
     });
 
     it('should disconnect connections it created', async () => {

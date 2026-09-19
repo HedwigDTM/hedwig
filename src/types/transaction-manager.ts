@@ -16,6 +16,11 @@ export type TransactionCallbackFunction<
 export type TransactionManagerConfig = {
   s3Config?: S3Config;
   redisConfig?: RedisConfig;
+  /**
+   * When enabled, hedwig logs transaction lifecycle events (start, rollback,
+   * cleanup outcomes) to the console.
+   */
+  verbose?: boolean;
 };
 
 /**
