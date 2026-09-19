@@ -5,7 +5,7 @@ export interface RollbackableAction {
 
 // Todo: add genrics
 export default abstract class RollbackableClient {
-  protected rollbackActions: (() => Promise<any>)[];
+  protected rollbackActions: (() => Promise<unknown>)[];
   protected transactionID: string;
 
   constructor(_transactionID: string) {
