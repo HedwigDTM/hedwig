@@ -1,5 +1,6 @@
 import RollbackableClient from '../RollbackableClient/RollbackableClient';
 import { RedisConnection } from './RedisConnection';
+import { TransactionStateStore } from '../types/transaction-state';
 import { RedisRollBackStrategy } from './RedisRollbackStrategy';
 import { RedisRollbackStrategyType } from '../types/redis';
 import { RedisRollbackFactory } from './RedisRollbackFactory';
@@ -15,9 +16,11 @@ export class RedisRollbackClient extends RollbackableClient {
     transactionID: string,
     connection: RedisConnection,
     rollbackStrategyType: RedisRollbackStrategyType,
-    backupHashName?: string
+    backupHashName?: string,
+    stateStore?: TransactionStateStore
   ) {
-    super(transactionID);
+    super(transactionID, stateStore);
+    this.clientKind = 'redis';
     this.connection = connection;
     this.rollbackStrategy = RedisRollbackFactory(
       this.connection,
@@ -53,6 +56,7 @@ export class RedisRollbackClient extends RollbackableClient {
     };
 
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('set');
     return await this.connection.set(key, value);
   }
 
@@ -69,6 +73,7 @@ export class RedisRollbackClient extends RollbackableClient {
       await this.rollbackStrategy.restoreItem(key);
     };
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('del');
 
     return await this.connection.del(key);
   }
@@ -91,6 +96,7 @@ export class RedisRollbackClient extends RollbackableClient {
       await this.rollbackStrategy.restoreItem(key);
     };
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('incr');
 
     return await this.connection.incr(key);
   }
@@ -111,6 +117,7 @@ export class RedisRollbackClient extends RollbackableClient {
       await this.rollbackStrategy.restoreItem(key);
     };
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('decr');
 
     return await this.connection.decr(key);
   }

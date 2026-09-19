@@ -52,7 +52,8 @@ and never mask it.
 - [Getting started](./docs/getting-started.md)
 - [Rollback strategies](./docs/strategies.md)
 - [Error handling](./docs/errors.md)
-- [Custom actions](./docs/custom-actions.md) (beta)
+- [Custom actions](./docs/custom-actions.md)
+- [Transaction state & recovery](./docs/transaction-state.md)
 - [Limitations](./docs/limitations.md)
 - [API reference](./docs/api.md)
 

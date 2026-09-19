@@ -123,9 +123,26 @@ try {
 - `RollbackError` — rollback/cleanup aggregation, `rollbackFailures: unknown[]`
 - `S3BackupError` / `S3RestoreError` — S3 backup and restore failures
 
-## Custom actions (beta)
+## Transaction state & recovery
 
-`customActions.register(action)` runs `execute()` immediately and records
-`rollback()` as compensation. See [custom actions](./custom-actions.md).
+```ts
+import { RedisStateStore, recoverInFlightTransactions } from '@hedwig-team/dtm';
 
-> **Status: beta.**
+const manager = new TransactionManager({
+  s3Config: {
+    region: 'us-east-1',
+    rollbackStrategy: S3RollbackStrategyType.DUPLICATE_FILE,
+  },
+  stateStore: new RedisStateStore(redisConnection),
+});
+
+// after a crash:
+const summary = await recoverInFlightTransactions({
+  store: new RedisStateStore(redisConnection),
+  olderThan: '2026-01-01T00:00:00Z',
+  s3: { connection: s3 },
+  redis: { connection: redisConnection },
+});
+```
+
+See [transaction state](./transaction-state.md) for the full semantics.
