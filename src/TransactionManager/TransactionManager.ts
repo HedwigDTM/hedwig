@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { S3Client } from '@aws-sdk/client-s3';
 import { S3Config, S3RollbackStrategyType } from '../types/s3';
 import { RedisConfig, RedisRollbackStrategyType } from '../types/redis';
+import { CustomActionRegistry } from '../CustomAction/CustomActionRegistry';
+import { CustomActionsApi } from '../CustomAction/ICustomAction';
 import { RedisRollbackClient } from '../RedisClient/RedisClient';
 import {
   RollbackableClientsFor,
@@ -66,14 +68,20 @@ export default class TransactionManager<
    * @param callback - A callback function that receives an object with the clients.
    */
   public async transaction<Result>(
-    callback: TransactionCallbackFunction<RollbackableClientsFor<C>, Result>
+    callback: TransactionCallbackFunction<
+      RollbackableClientsFor<C> & { customActions: CustomActionsApi },
+      Result
+    >
   ): Promise<Result> {
     const transactionID = uuidv4();
     this.log(`transaction ${transactionID} started`);
     const clients: {
       S3Client?: S3RollbackClient;
       RedisClient?: RedisRollbackClient;
+      CustomActions?: CustomActionRegistry;
     } = {};
+    const customActions = new CustomActionRegistry(transactionID);
+    clients.CustomActions = customActions;
     let ownedRedisConnection: { quit(): Promise<unknown> } | null = null;
 
     if (this.s3Config) {
@@ -116,7 +124,10 @@ export default class TransactionManager<
       // TypeScript cannot verify a deferred conditional type from the runtime
       // bag, so this named boundary is the single assertion in the file; the
       // bag only ever holds clients this config created.
-      const clientsForConfig = clients as RollbackableClientsFor<C>;
+      const clientsForConfig = {
+        ...(clients as RollbackableClientsFor<C>),
+        customActions: customActions as CustomActionsApi,
+      } as RollbackableClientsFor<C> & { customActions: CustomActionsApi };
       transactionResult = await callback(clientsForConfig);
     } catch (error) {
       transactionFailed = true;
