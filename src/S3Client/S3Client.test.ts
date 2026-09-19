@@ -30,7 +30,7 @@ describe('S3Client', () => {
   });
 
   describe('General operations', () => {
-    it('Checking .headBucket() - should return info on the bucket', async () => {
+    it('headBucket should return bucket info', async () => {
       s3Mock.on(HeadBucketCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
@@ -50,7 +50,7 @@ describe('S3Client', () => {
       expect(result.$metadata.httpStatusCode).toBe(200);
     });
 
-    it('Checking .headObject() - should return object metadata', async () => {
+    it('headObject should return object metadata', async () => {
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
@@ -74,7 +74,7 @@ describe('S3Client', () => {
       expect(result.ContentType).toBe('text/plain');
     });
 
-    it('Checking .listBuckets() - should list all buckets', async () => {
+    it('listBuckets should list all buckets', async () => {
       const mockBuckets = [
         { Name: 'bucket1', CreationDate: new Date() },
         { Name: 'bucket2', CreationDate: new Date() },
@@ -101,7 +101,7 @@ describe('S3Client', () => {
       expect(result.Buckets).toEqual(mockBuckets);
     });
 
-    it('Checking .getObject() - should retrieve an object', async () => {
+    it('getObject should retrieve an object', async () => {
       const mockStream = new Readable();
       mockStream.push('hello world');
       mockStream.push(null);
@@ -131,7 +131,7 @@ describe('S3Client', () => {
       expect(result.Body).toBeDefined();
     });
 
-    it('Checking .closeTransaction() - should close the transaction', async () => {
+    it('closeTransaction (IN_MEMORY) should clear the in-memory backups', async () => {
       const mockS3Client = new S3RollbackClient(
         'test',
         connection,
@@ -144,7 +144,7 @@ describe('S3Client', () => {
       // being used, so we just verify the method exists and can be called
     });
 
-    it('Checking .putObject() - should fail instead of assuming the object is missing when head returns a non-404 error', async () => {
+    it('putObject should fail when a head error is not a 404', async () => {
       s3Mock.on(HeadObjectCommand).rejects({
         name: 'AccessDenied',
         $metadata: { httpStatusCode: 403 },
@@ -163,7 +163,7 @@ describe('S3Client', () => {
       expect(s3Mock.commandCalls(DeleteObjectCommand)).toHaveLength(0);
     });
 
-    it('Checking .deleteObject() - should not back up or restore a missing object', async () => {
+    it('deleteObject (missing object) should delete without backup or restore', async () => {
       s3Mock.on(HeadObjectCommand).rejects({
         name: 'NotFound',
         $metadata: { httpStatusCode: 404 },
@@ -187,7 +187,7 @@ describe('S3Client', () => {
       expect(s3Mock.commandCalls(CopyObjectCommand)).toHaveLength(0);
     });
 
-    it('Checking .createBucket() - should not delete an existing bucket on rollback when head reports it already exists', async () => {
+    it('createBucket should not delete an existing bucket on rollback', async () => {
       s3Mock.on(HeadBucketCommand).rejects({
         name: 'BucketAlreadyOwnedByYou',
         $metadata: { httpStatusCode: 409 },
@@ -212,7 +212,7 @@ describe('S3Client', () => {
       expect(s3Mock.commandCalls(DeleteBucketCommand)).toHaveLength(0);
     });
 
-    it('Checking .createBucket() - should fail instead of assuming the bucket is missing when head returns a non-404 error', async () => {
+    it('createBucket should fail when a head error is not a 404', async () => {
       s3Mock.on(HeadBucketCommand).rejects({
         name: 'AccessDenied',
         $metadata: { httpStatusCode: 403 },
@@ -232,7 +232,7 @@ describe('S3Client', () => {
   });
 
   describe('Duplicate strategy', () => {
-    it('Checking .deleteBucket() DUPLICATE - should fail fast for a non-empty bucket', async () => {
+    it('deleteBucket (DUPLICATE_FILE) should fail fast for a non-empty bucket', async () => {
       s3Mock.on(HeadBucketCommand).resolves({
         $metadata: { httpStatusCode: 200 },
       });
@@ -255,7 +255,7 @@ describe('S3Client', () => {
       expect(s3Mock.commandCalls(DeleteBucketCommand)).toHaveLength(0);
     });
 
-    it('Checking .deleteBucket() DUPLICATE - should delete an empty bucket and recreate it on rollback', async () => {
+    it('deleteBucket (DUPLICATE_FILE) should delete an empty bucket and recreate it on rollback', async () => {
       s3Mock.on(HeadBucketCommand).resolves({
         $metadata: { httpStatusCode: 200 },
       });
@@ -292,7 +292,7 @@ describe('S3Client', () => {
       );
     });
 
-    it('Checking .deleteBucket() DUPLICATE - should fail for a missing bucket', async () => {
+    it('deleteBucket (DUPLICATE_FILE) should fail for a missing bucket', async () => {
       s3Mock.on(HeadBucketCommand).rejects({
         name: 'NotFound',
         $metadata: { httpStatusCode: 404 },
@@ -311,7 +311,7 @@ describe('S3Client', () => {
       expect(s3Mock.commandCalls(DeleteBucketCommand)).toHaveLength(0);
     });
 
-    it('Checking .createBucket - should create a bucket and delete it upon rollback', async () => {
+    it('createBucket (DUPLICATE_FILE) should create a bucket and delete it on rollback', async () => {
       s3Mock.on(HeadBucketCommand).rejects({
         name: 'NotFound',
         $metadata: { httpStatusCode: 404 },
@@ -343,7 +343,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
     });
 
-    it('Checking .deleteObject() DUPLICATE - should delete the object and restore it upon rollback', async () => {
+    it('deleteObject (DUPLICATE_FILE) should delete the object and restore it on rollback', async () => {
       s3Mock.on(DeleteObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
@@ -393,7 +393,7 @@ describe('S3Client', () => {
       });
     });
 
-    it('Checking .putObject() DUPLICATE - Object exists - should set the new file and restore the old value upon rollback', async () => {
+    it('putObject (DUPLICATE_FILE, existing object) should set the new body and restore the old one on rollback', async () => {
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: {
           httpStatusCode: 200,
@@ -448,7 +448,7 @@ describe('S3Client', () => {
       });
     });
 
-    it('Checking .putObject() DUPLICATE - Object doesnt exists - should set the new file and delete it upon rollback', async () => {
+    it('putObject (DUPLICATE_FILE, missing object) should set the object and delete it on rollback', async () => {
       s3Mock.on(HeadObjectCommand).rejects({
         name: 'NotFound',
         $metadata: { httpStatusCode: 404 },
@@ -486,7 +486,7 @@ describe('S3Client', () => {
       });
     });
 
-    it('Checking .putObject() DUPLICATE - concurrent transactions on the same key use isolated backup keys', async () => {
+    it('putObject (DUPLICATE_FILE) should isolate backup keys per concurrent transaction', async () => {
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: { httpStatusCode: 200 },
       });
@@ -526,7 +526,7 @@ describe('S3Client', () => {
       );
     });
 
-    it('Checking .putObject() DUPLICATE - same key in different buckets uses bucket-scoped backup keys', async () => {
+    it('putObject (DUPLICATE_FILE) should scope backup keys per bucket', async () => {
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: { httpStatusCode: 200 },
       });
@@ -555,7 +555,7 @@ describe('S3Client', () => {
       );
     });
 
-    it('Checking .closeTransaction() DUPLICATE - should delete only this transaction backup objects', async () => {
+    it('closeTransaction (DUPLICATE_FILE) should delete only the backup objects of this transaction', async () => {
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: { httpStatusCode: 200 },
       });
@@ -608,7 +608,7 @@ describe('S3Client', () => {
       expect(deletedAfterB).toContain('tx-b/bucketName/key');
     });
 
-    it('Checking .closeTransaction() DUPLICATE - should remove the general backup bucket only when this transaction created it', async () => {
+    it('closeTransaction (DUPLICATE_FILE) should remove the general backup bucket only when this transaction created it', async () => {
       s3Mock.on(HeadObjectCommand).resolves({
         $metadata: { httpStatusCode: 200 },
       });
@@ -652,7 +652,7 @@ describe('S3Client', () => {
   });
 
   describe('In memory strategy', () => {
-    it('Checking .deleteBucket() MEMORY - should fail fast for a non-empty bucket', async () => {
+    it('deleteBucket (IN_MEMORY) should fail fast for a non-empty bucket', async () => {
       s3Mock.on(HeadBucketCommand).resolves({
         $metadata: { httpStatusCode: 200 },
       });
@@ -673,7 +673,7 @@ describe('S3Client', () => {
       expect(s3Mock.commandCalls(DeleteBucketCommand)).toHaveLength(0);
     });
 
-    it('Checking .deleteBucket() MEMORY - should delete an empty bucket and recreate it on rollback', async () => {
+    it('deleteBucket (IN_MEMORY) should delete an empty bucket and recreate it on rollback', async () => {
       s3Mock.on(HeadBucketCommand).resolves({
         $metadata: { httpStatusCode: 200 },
       });
@@ -709,7 +709,7 @@ describe('S3Client', () => {
       );
     });
 
-    it('Checking .createBucket Memory - should create a bucket and delete it upon rollback', async () => {
+    it('createBucket (IN_MEMORY) should create a bucket and delete it on rollback', async () => {
       s3Mock.on(HeadBucketCommand).rejects({
         name: 'NotFound',
         $metadata: { httpStatusCode: 404 },
@@ -741,7 +741,7 @@ describe('S3Client', () => {
       expect(s3Mock).toHaveReceivedCommandWith(DeleteBucketCommand, params);
     });
 
-    it('Checking .deleteObject() Memory - should delete the object and restore it upon rollback', async () => {
+    it('deleteObject (IN_MEMORY) should delete the object and restore it on rollback', async () => {
       const mockStream = new Readable();
       mockStream.push('hello world');
       mockStream.push(null);
@@ -789,7 +789,7 @@ describe('S3Client', () => {
       });
     });
 
-    it('Checking .putObject() Memory - Object exists - should set the new file and restore the old value upon rollback', async () => {
+    it('putObject (IN_MEMORY, existing object) should set the new body and restore the old one on rollback', async () => {
       const mockStream = new Readable();
       mockStream.push('hello world');
       mockStream.push(null);
@@ -844,7 +844,7 @@ describe('S3Client', () => {
       });
     });
 
-    it('Checking .putObject() Memory - Object doesnt exists - should set the new file and delete it upon rollback', async () => {
+    it('putObject (IN_MEMORY, missing object) should set the object and delete it on rollback', async () => {
       s3Mock.on(HeadObjectCommand).rejects({
         name: 'NotFound',
         $metadata: { httpStatusCode: 404 },
