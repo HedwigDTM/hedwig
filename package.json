@@ -10,6 +10,8 @@
   "scripts": {
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build && npm test",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "dev": "npx tsc && node dist/index.js",
     "lint": "eslint .",
