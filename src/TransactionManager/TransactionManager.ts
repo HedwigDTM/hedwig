@@ -44,10 +44,21 @@ export default class TransactionManager<
 > {
   private s3Config?: S3Config;
   private redisConfig?: RedisConfig;
+  private verbose: boolean;
 
   constructor(config: C) {
     this.s3Config = config.s3Config;
     this.redisConfig = config.redisConfig;
+    this.verbose = config.verbose === true;
+  }
+
+  /**
+   * Lifecycle logger: silent unless `verbose: true` was configured.
+   */
+  private log(message: string): void {
+    if (this.verbose) {
+      console.info(`[hedwig] ${message}`);
+    }
   }
 
   /**
@@ -58,6 +69,7 @@ export default class TransactionManager<
     callback: TransactionCallbackFunction<RollbackableClientsFor<C>, Result>
   ): Promise<Result> {
     const transactionID = uuidv4();
+    this.log(`transaction ${transactionID} started`);
     const clients: {
       S3Client?: S3RollbackClient;
       RedisClient?: RedisRollbackClient;
@@ -109,6 +121,11 @@ export default class TransactionManager<
     } catch (error) {
       transactionFailed = true;
       transactionError = error;
+      this.log(
+        `transaction ${transactionID} callback failed, rolling back: ${String(
+          transactionError
+        )}`
+      );
     }
 
     const cleanupFailures: unknown[] = [];
@@ -122,6 +139,14 @@ export default class TransactionManager<
           cleanupFailures.push(outcome.reason);
         }
       }
+    }
+
+    if (cleanupFailures.length > 0) {
+      this.log(
+        `transaction ${transactionID} rollback completed with ${cleanupFailures.length} failure(s)`
+      );
+    } else {
+      this.log(`transaction ${transactionID} rolled back`);
     }
 
     const closeOutcomes = await Promise.allSettled(
@@ -146,6 +171,9 @@ export default class TransactionManager<
       if (cleanupFailures.length > 0 && isErrorWithCleanup(transactionError)) {
         transactionError.cleanupFailures = cleanupFailures;
       }
+      this.log(
+        `transaction ${transactionID} rolled back with attached cleanup failures`
+      );
       throw transactionError;
     }
 
@@ -156,6 +184,7 @@ export default class TransactionManager<
       );
     }
 
+    this.log(`transaction ${transactionID} committed`);
     return transactionResult;
   }
 }
