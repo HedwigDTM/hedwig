@@ -39,7 +39,7 @@ describe('TransactionManager', () => {
     });
   });
 
-  it('returns the callback result and exposes configured clients as non-optional', async () => {
+  it('should return the callback result and expose configured clients as non-optional', async () => {
     s3Instance.closeTransaction.mockResolvedValue();
     redisInstance.closeTransaction.mockResolvedValue();
     s3Instance.rollback.mockResolvedValue();
