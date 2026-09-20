@@ -1,5 +1,8 @@
 # Transaction state & recovery
 
+> **Status: beta.** The transaction-state and recovery APIs are new and may
+> still change in minor releases before they stabilize.
+
 By default, hedwig's rollback bookkeeping lives in memory: if the process
 dies mid-transaction, orphaned half-applied writes cannot be recovered.
 Configuring a **transaction state store** fixes that.

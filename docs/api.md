@@ -123,7 +123,7 @@ try {
 - `RollbackError` — rollback/cleanup aggregation, `rollbackFailures: unknown[]`
 - `S3BackupError` / `S3RestoreError` — S3 backup and restore failures
 
-## Transaction state & recovery
+## Transaction state & recovery (beta)
 
 ```ts
 import { RedisStateStore, recoverInFlightTransactions } from '@hedwig-team/dtm';

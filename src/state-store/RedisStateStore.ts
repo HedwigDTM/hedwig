@@ -11,6 +11,8 @@ const TX_KEY_PREFIX = 'hedwig:tx:';
  * Redis-backed transaction state store: transaction records live in
  * `hedwig:tx:<id>` hashes, recorded actions in `hedwig:tx:<id>:actions`.
  * State survives process crashes, which is what enables recovery.
+ *
+ * @beta
  */
 export class RedisStateStore implements TransactionStateStore {
   constructor(private readonly connection: RedisConnection) {}

@@ -9,6 +9,8 @@ import {
 /**
  * Process-local state store for tests and single-instance usage. State dies
  * with the process, so recovery is only meaningful within one lifetime.
+ *
+ * @beta
  */
 export class InMemoryStateStore implements TransactionStateStore {
   private records: Map<string, TransactionRecord> = new Map();

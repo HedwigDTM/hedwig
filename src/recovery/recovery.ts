@@ -33,6 +33,9 @@ export interface RecoverySummary {
  * `<transactionID>/` and Redis backup hashes) are still on the backend, so
  * recovery replays them and marks the transactions rolled back. Committed
  * transactions are never touched.
+ *
+ * @beta The recovery APIs are new and may still change in minor releases
+ * before they stabilize.
  */
 export async function recoverInFlightTransactions(
   options: RecoveryOptions

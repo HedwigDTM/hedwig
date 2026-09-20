@@ -23,6 +23,9 @@ export interface RecordedAction {
  * action is recorded, and completion is marked — enabling a recovery pass
  * that rolls back transactions orphaned by a crash (their durable backups
  * live in the DUPLICATE_FILE strategies: S3 backup keys and Redis hashes).
+ *
+ * @beta The transaction-state and recovery APIs are new and may still
+ * change in minor releases before they stabilize.
  */
 export interface TransactionStateStore {
   start(record: TransactionRecord): Promise<void>;
