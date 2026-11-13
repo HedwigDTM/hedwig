@@ -12,5 +12,10 @@ export interface RedisConnection {
   incr(key: string): Promise<number>;
   decr(key: string): Promise<number>;
   hGet(key: string, field: string): Promise<string | undefined>;
+  hGetAll(key: string): Promise<Record<string, string>>;
   hSet(key: string, field: string, value: string | number): Promise<number>;
+  scanIterator(options?: {
+    MATCH?: string;
+    COUNT?: number;
+  }): AsyncIterable<string | Buffer>;
 }

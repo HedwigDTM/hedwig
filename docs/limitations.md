@@ -32,12 +32,13 @@ non-empty buckets, so hedwig fails fast with a clear error instead of
 running a backup that could never be used. Missing buckets fail too; a
 successful delete rolls back by recreating the (empty) bucket.
 
-## Single process
+## Single process (by default)
 
-Rollback bookkeeping is process-local. If the process dies mid-transaction,
-hedwig cannot resume it; recovery of orphaned writes is tracked in
-[#71](https://github.com/HedwigDTM/hedwig/issues/71) (pluggable consistency
-backend).
+Without a configured state store, rollback bookkeeping is process-local: if
+the process dies mid-transaction, hedwig cannot resume it. Configure a
+`stateStore` (`RedisStateStore`) to persist transaction state and enable
+`recoverInFlightTransactions` — see
+[transaction state](./transaction-state.md).
 
 ## IAM
 

@@ -22,6 +22,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { S3RollbackFactory } from './S3RollbackFactory';
 import { S3RollBackStrategy } from './S3RollbackStrategy';
+import { TransactionStateStore } from '../types/transaction-state';
 import {
   S3BucketParams,
   S3ObjectParams,
@@ -49,9 +50,11 @@ export class S3RollbackClient extends RollbackableClient {
     transactionID: string,
     connection: AWSClient,
     rollbackStrategyType: S3RollbackStrategyType,
-    backupBucketName?: string
+    backupBucketName?: string,
+    stateStore?: TransactionStateStore
   ) {
-    super(transactionID);
+    super(transactionID, stateStore);
+    this.clientKind = 's3';
     this.connection = connection;
     this.rollbackStrategy = S3RollbackFactory(
       this.connection,
@@ -127,6 +130,7 @@ export class S3RollbackClient extends RollbackableClient {
     };
 
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('putObject');
 
     return result;
   }
@@ -160,6 +164,7 @@ export class S3RollbackClient extends RollbackableClient {
     };
 
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('deleteObject');
 
     return result;
   }
@@ -197,6 +202,7 @@ export class S3RollbackClient extends RollbackableClient {
       : async () => {};
 
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('createBucket');
 
     return result;
   }
@@ -240,6 +246,7 @@ export class S3RollbackClient extends RollbackableClient {
     };
 
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('deleteBucket');
 
     return result;
   }

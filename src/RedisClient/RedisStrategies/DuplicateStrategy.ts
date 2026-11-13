@@ -6,6 +6,31 @@ import { RollbackError } from '../../errors';
 /**
  * Class to handle duplicate delete, backup and restore of Redis objects.
  */
+function isRedisBackupRecord(value: unknown): value is RedisBackupRecord {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  if (!('existed' in value) || !('value' in value)) {
+    return false;
+  }
+  if (typeof value.existed !== 'boolean') {
+    return false;
+  }
+  return value.existed ? typeof value.value === 'string' : value.value === null;
+}
+
+export function parseBackupRecord(raw: string, key: string): RedisBackupRecord {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRedisBackupRecord(parsed)) {
+      throw new Error('invalid record shape');
+    }
+    return parsed;
+  } catch {
+    throw new RollbackError(`Corrupted backup record for key ${key}.`);
+  }
+}
+
 export class DuplicateStrategy extends RedisRollBackStrategy {
   private backupHashName: string;
 
@@ -48,8 +73,9 @@ export class DuplicateStrategy extends RedisRollBackStrategy {
     if (raw === null || raw === undefined) {
       throw new RollbackError(`No backup recorded for key ${key}.`);
     }
-    // Records are written by backupItem as JSON
-    const record = JSON.parse(raw) as RedisBackupRecord;
+    // Records are written by backupItem as JSON; hGet returns untrusted
+    // bytes, so the record is validated instead of blindly cast
+    const record = parseBackupRecord(raw, key);
     if (record.existed) {
       await this.connection.set(key, record.value);
     } else {

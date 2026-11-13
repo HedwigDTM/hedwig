@@ -1,8 +1,5 @@
 # Custom actions
 
-> **Status: beta.** The custom-actions API is new and may still change in
-> minor releases before it stabilizes.
-
 Any side effect — an HTTP call, a database write, a third-party API — can
 participate in a hedwig transaction by implementing `ICustomAction`:
 `execute` runs inside the transaction, and `rollback` is recorded as its

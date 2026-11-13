@@ -1,4 +1,5 @@
 import RollbackableClient from '../RollbackableClient/RollbackableClient';
+import { TransactionStateStore } from '../types/transaction-state';
 import { CustomActionsApi, ICustomAction } from './ICustomAction';
 
 /**
@@ -6,16 +7,13 @@ import { CustomActionsApi, ICustomAction } from './ICustomAction';
  * its `execute()` immediately and records `rollback()` as a compensating
  * action; rollback runs compensations in reverse registration order, with
  * the same resilience as every other hedwig client.
- *
- * @beta The custom-actions API is new and may still change in minor
- * releases before it stabilizes.
  */
 export class CustomActionRegistry
   extends RollbackableClient
   implements CustomActionsApi
 {
-  constructor(transactionID: string) {
-    super(transactionID);
+  constructor(transactionID: string, stateStore?: TransactionStateStore) {
+    super(transactionID, stateStore);
   }
 
   public async register(action: ICustomAction): Promise<unknown> {
@@ -26,6 +24,7 @@ export class CustomActionRegistry
     };
 
     this.rollbackActions.push(rollbackAction);
+    await this.recordAction('register');
 
     try {
       return await action.execute();

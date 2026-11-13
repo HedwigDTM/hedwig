@@ -1,16 +1,34 @@
+import { ClientKind, TransactionStateStore } from '../types/transaction-state';
 import { RollbackError } from '../errors';
+
 export interface RollbackableAction {
   rollbackAction: () => Promise<unknown>;
 }
 
-// Todo: add genrics
 export default abstract class RollbackableClient {
   protected rollbackActions: (() => Promise<unknown>)[];
   protected transactionID: string;
+  protected clientKind: ClientKind = 'custom';
+  private stateStore?: TransactionStateStore;
 
-  constructor(_transactionID: string) {
+  constructor(_transactionID: string, stateStore?: TransactionStateStore) {
     this.transactionID = _transactionID;
+    this.stateStore = stateStore;
     this.rollbackActions = [];
+  }
+
+  /**
+   * Records a mutating action in the configured state store (no-op when
+   * no store is configured).
+   */
+  protected async recordAction(kind: string): Promise<void> {
+    if (!this.stateStore) {
+      return;
+    }
+    await this.stateStore.recordAction(this.transactionID, {
+      client: this.clientKind,
+      kind,
+    });
   }
 
   public getTransactionID(): string {
