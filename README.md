@@ -1,11 +1,36 @@
-![Hedwig Header](./logo.png)
+<p align="center">
+  <a href="https://github.com/HedwigDTM/hedwig">
+    <img src="https://raw.githubusercontent.com/HedwigDTM/hedwig/main/logo.png" alt="Hedwig" width="520">
+  </a>
+</p>
 
-[![CI](https://github.com/HedwigDTM/hedwig/actions/workflows/ci.yml/badge.svg)](https://github.com/HedwigDTM/hedwig/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
+<p align="center">
+  <a href="https://github.com/HedwigDTM/hedwig/actions/workflows/ci.yml"><img src="https://github.com/HedwigDTM/hedwig/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/@hedwig-team/dtm"><img src="https://img.shields.io/npm/v/@hedwig-team/dtm" alt="npm version"></a>
+  <a href="https://github.com/HedwigDTM/hedwig/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/HedwigDTM/hedwig"><b>GitHub</b></a> ·
+  <a href="https://github.com/HedwigDTM/hedwig/tree/main/docs">Docs</a> ·
+  <a href="https://github.com/HedwigDTM/hedwig/blob/main/CHANGELOG.md">Changelog</a> ·
+  <a href="https://github.com/HedwigDTM/hedwig/issues">Issues</a>
+</p>
 
 ---
 
 **Hedwig** is a distributed transaction manager, designed to simplify complex workflows involving interactions with multiple third-party resources. It provides a reliable, simplified approach to orchestrating and managing transactions across distributed systems, ensuring efficient and consistent operations.
+
+## Install
+
+```bash
+npm install @hedwig-team/dtm @aws-sdk/client-s3 redis
+```
+
+`@aws-sdk/client-s3` and `redis` are peer dependencies: install the ones for
+the backends you use.
+
+## Usage
 
 ```typescript
 import {
@@ -49,17 +74,17 @@ and never mask it.
 
 ## Documentation
 
-- [Getting started](./docs/getting-started.md)
-- [Rollback strategies](./docs/strategies.md)
-- [Error handling](./docs/errors.md)
-- [Custom actions](./docs/custom-actions.md)
-- [Transaction state & recovery](./docs/transaction-state.md) (beta)
-- [Limitations](./docs/limitations.md)
-- [API reference](./docs/api.md)
+- [Getting started](https://github.com/HedwigDTM/hedwig/blob/main/docs/getting-started.md)
+- [Rollback strategies](https://github.com/HedwigDTM/hedwig/blob/main/docs/strategies.md)
+- [Error handling](https://github.com/HedwigDTM/hedwig/blob/main/docs/errors.md)
+- [Custom actions](https://github.com/HedwigDTM/hedwig/blob/main/docs/custom-actions.md)
+- [Transaction state & recovery](https://github.com/HedwigDTM/hedwig/blob/main/docs/transaction-state.md) (beta)
+- [Limitations](https://github.com/HedwigDTM/hedwig/blob/main/docs/limitations.md)
+- [API reference](https://github.com/HedwigDTM/hedwig/blob/main/docs/api.md)
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](./LICENSE.md) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/HedwigDTM/hedwig/blob/main/LICENSE.md) file for details.
 
 ## Contact
 
